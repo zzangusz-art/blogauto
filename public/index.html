@@ -5,330 +5,300 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>블로그 자동화 시스템</title>
   <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
   <style>
     :root {
-      --bg:           #0d0f1a;
-      --surface:      #151726;
-      --surface2:     #1e2136;
-      --surface3:     #252840;
-      --border:       #2a2e4a;
-      --border-light: #363a5e;
-      --accent:       #6366f1;
-      --accent-light: #818cf8;
-      --accent-dim:   rgba(99,102,241,.15);
-      --text:         #e2e8f0;
-      --text-dim:     #94a3b8;
-      --text-muted:   #64748b;
-      --success:      #10b981;
-      --error:        #ef4444;
-      --r:            10px;
-      --r-sm:         7px;
+      --bg:          #0d0f1a;
+      --surface:     #151726;
+      --surface2:    #1e2136;
+      --surface3:    #252840;
+      --border:      #2a2e4a;
+      --accent:      #6366f1;
+      --accent-l:    #818cf8;
+      --accent-dim:  rgba(99,102,241,.15);
+      --text:        #e2e8f0;
+      --text-dim:    #94a3b8;
+      --text-muted:  #64748b;
+      --success:     #10b981;
+      --error:       #ef4444;
+      --warning:     #f59e0b;
+      --r:           10px;
+      --rsm:         7px;
     }
-
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-
     body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      display: grid;
-      grid-template-rows: 52px 1fr;
-      overflow: hidden;
+      font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+      background:var(--bg); color:var(--text);
+      height:100vh; display:grid; grid-template-rows:52px 1fr; overflow:hidden;
     }
 
-    /* ── Header ───────────────────────────────────── */
+    /* ── Header ── */
     header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 20px;
-      gap: 10px;
+      background:var(--surface); border-bottom:1px solid var(--border);
+      display:flex; align-items:center; padding:0 20px; gap:10px;
     }
     .logo {
-      width:30px; height:30px;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      border-radius: 8px;
-      display:flex; align-items:center; justify-content:center;
-      font-size:15px; flex-shrink:0;
+      width:30px; height:30px; flex-shrink:0;
+      background:linear-gradient(135deg,#6366f1,#8b5cf6);
+      border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:15px;
     }
     header h1 { font-size:15px; font-weight:600; }
     .badge {
       font-size:11px; padding:2px 8px;
-      background: var(--accent-dim);
-      color: var(--accent-light);
-      border-radius:20px;
-      border: 1px solid rgba(99,102,241,.3);
+      background:var(--accent-dim); color:var(--accent-l);
+      border-radius:20px; border:1px solid rgba(99,102,241,.3);
     }
     .spacer { flex:1; }
     .hist-btn {
-      background:transparent;
-      border:1px solid var(--border);
-      color:var(--text-dim);
-      padding:5px 14px;
-      border-radius:var(--r-sm);
-      cursor:pointer;
-      font-size:13px;
+      background:transparent; border:1px solid var(--border);
+      color:var(--text-dim); padding:5px 14px;
+      border-radius:var(--rsm); cursor:pointer; font-size:13px; transition:.2s;
+    }
+    .hist-btn:hover { border-color:var(--accent); color:var(--accent-l); }
+
+    /* ── Layout ── */
+    main { display:grid; grid-template-columns:360px 1fr; overflow:hidden; }
+
+    /* ── Mode Tabs ── */
+    .mode-tabs {
+      display:grid; grid-template-columns:1fr 1fr;
+      background:var(--surface2); border-radius:var(--rsm);
+      padding:3px; gap:3px;
+    }
+    .mtab {
+      background:transparent; border:none;
+      color:var(--text-muted); padding:7px;
+      border-radius:5px; cursor:pointer; font-size:13px; font-weight:500;
       transition:.2s;
     }
-    .hist-btn:hover { border-color:var(--accent); color:var(--accent-light); }
+    .mtab.active { background:var(--surface3); color:var(--text); }
+    .mtab:hover:not(.active) { color:var(--text-dim); }
 
-    /* ── Layout ───────────────────────────────────── */
-    main {
-      display: grid;
-      grid-template-columns: 360px 1fr;
-      overflow: hidden;
-    }
-
-    /* ── Input Panel ──────────────────────────────── */
+    /* ── Input Panel ── */
     .input-panel {
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .section-label {
-      font-size:11px; font-weight:600; letter-spacing:.08em;
-      text-transform:uppercase; color:var(--text-muted);
+      background:var(--surface); border-right:1px solid var(--border);
+      overflow-y:auto; padding:16px 18px;
+      display:flex; flex-direction:column; gap:14px;
     }
     .field { display:flex; flex-direction:column; gap:7px; }
     label { font-size:13px; font-weight:500; color:var(--text-dim); display:flex; align-items:center; gap:5px; }
-    .req  { color:var(--error); font-size:11px; }
-    .opt  { color:var(--text-muted); font-size:11px; }
-
+    .req { color:var(--error); font-size:11px; }
+    .opt { color:var(--text-muted); font-size:11px; }
     textarea, select {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      border-radius: var(--r-sm);
-      padding: 9px 11px;
-      font-size: 13.5px;
-      font-family: inherit;
-      transition: border-color .2s;
-      resize: vertical;
+      background:var(--surface2); border:1px solid var(--border);
+      color:var(--text); border-radius:var(--rsm);
+      padding:9px 11px; font-size:13.5px; font-family:inherit; transition:.2s;
     }
+    textarea { resize:vertical; }
     textarea:focus, select:focus { outline:none; border-color:var(--accent); }
     textarea::placeholder { color:var(--text-muted); }
     select {
       cursor:pointer; appearance:none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat:no-repeat;
-      background-position: right 10px center;
-      padding-right:32px;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 10px center; padding-right:32px;
     }
     .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
+    /* Bulk hint */
+    .bulk-hint {
+      font-size:12px; color:var(--text-muted);
+      padding:8px 10px;
+      background:var(--surface3); border:1px solid var(--border); border-radius:var(--rsm);
+      line-height:1.6;
+    }
+    .bulk-hint code { color:var(--accent-l); background:none; font-size:11.5px; }
+    .bulk-count {
+      font-size:12px; color:var(--text-muted); text-align:right;
+    }
+    .bulk-count.has-items { color:var(--accent-l); }
+
+    /* Generate button */
     .gen-btn {
-      background: linear-gradient(135deg, #6366f1, #4f46e5);
-      color:#fff; border:none;
-      border-radius:var(--r-sm);
-      padding:11px;
-      font-size:14px; font-weight:600;
-      cursor:pointer;
+      background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; border:none;
+      border-radius:var(--rsm); padding:11px;
+      font-size:14px; font-weight:600; cursor:pointer; width:100%;
       display:flex; align-items:center; justify-content:center; gap:8px;
-      width:100%;
-      transition:.2s;
-      box-shadow: 0 2px 12px rgba(99,102,241,.3);
+      transition:.2s; box-shadow:0 2px 12px rgba(99,102,241,.3);
     }
     .gen-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 4px 20px rgba(99,102,241,.45); }
     .gen-btn:disabled { opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
-
     .spinner {
       width:15px; height:15px;
-      border:2px solid rgba(255,255,255,.3);
-      border-top-color:#fff;
-      border-radius:50%;
-      animation:spin .7s linear infinite;
+      border:2px solid rgba(255,255,255,.3); border-top-color:#fff;
+      border-radius:50%; animation:spin .7s linear infinite;
     }
     @keyframes spin { to { transform:rotate(360deg); } }
-
     .shortcut-hint { font-size:11px; color:var(--text-muted); text-align:center; margin-top:-6px; }
 
     .tip-box {
-      font-size:12px; color:var(--text-dim);
-      padding:10px 12px;
-      background:rgba(99,102,241,.06);
-      border:1px solid rgba(99,102,241,.18);
-      border-radius:var(--r-sm);
-      line-height:1.65;
+      font-size:12px; color:var(--text-dim); padding:10px 12px;
+      background:rgba(99,102,241,.06); border:1px solid rgba(99,102,241,.18);
+      border-radius:var(--rsm); line-height:1.65;
     }
-    .tip-box strong { color:var(--accent-light); }
-
+    .tip-box strong { color:var(--accent-l); }
     .err-box {
-      font-size:13px;
-      padding:10px 12px;
-      background:rgba(239,68,68,.1);
-      border:1px solid rgba(239,68,68,.3);
-      color:#fca5a5;
-      border-radius:var(--r-sm);
+      font-size:13px; padding:10px 12px;
+      background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3);
+      color:#fca5a5; border-radius:var(--rsm);
     }
 
-    /* ── Output Panel ─────────────────────────────── */
+    /* ── Output Panel ── */
     .output-panel { display:flex; flex-direction:column; overflow:hidden; }
-
     .toolbar {
-      background:var(--surface);
-      border-bottom:1px solid var(--border);
-      padding:10px 20px;
-      display:flex; align-items:center; gap:8px;
+      background:var(--surface); border-bottom:1px solid var(--border);
+      padding:10px 20px; display:flex; align-items:center; gap:8px;
       min-height:52px; flex-shrink:0;
     }
     .out-title {
-      font-size:14px; font-weight:500;
-      flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      font-size:14px; font-weight:500; flex:1;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .out-meta { font-size:11px; color:var(--text-muted); white-space:nowrap; }
-
     .act-btn {
-      background:var(--surface2);
-      border:1px solid var(--border);
-      color:var(--text-dim);
-      padding:5px 11px;
-      border-radius:var(--r-sm);
-      cursor:pointer; font-size:12.5px;
-      transition:.2s; white-space:nowrap;
+      background:var(--surface2); border:1px solid var(--border);
+      color:var(--text-dim); padding:5px 11px; border-radius:var(--rsm);
+      cursor:pointer; font-size:12.5px; transition:.2s; white-space:nowrap;
       display:flex; align-items:center; gap:5px;
     }
-    .act-btn:hover { border-color:var(--accent); color:var(--accent-light); }
-    .act-btn.ok    { border-color:var(--success); color:var(--success); }
+    .act-btn:hover { border-color:var(--accent); color:var(--accent-l); }
+    .act-btn.ok { border-color:var(--success); color:var(--success); }
 
-    .output-body {
-      flex:1; overflow-y:auto;
-      padding:32px 40px;
-    }
-
-    /* Empty & Loading */
+    /* Single output */
+    .output-body { flex:1; overflow-y:auto; padding:32px 40px; }
     .center-state {
-      display:flex; flex-direction:column;
-      align-items:center; justify-content:center;
-      height:100%; gap:14px;
-      color:var(--text-muted); text-align:center;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      height:100%; gap:14px; color:var(--text-muted); text-align:center;
     }
     .center-state .icon { font-size:44px; opacity:.25; }
     .center-state h2 { font-size:17px; font-weight:500; color:var(--text-dim); }
-    .center-state p  { font-size:13.5px; max-width:300px; line-height:1.65; }
+    .center-state p { font-size:13.5px; max-width:300px; line-height:1.65; }
     .load-ring {
       width:38px; height:38px;
-      border:3px solid var(--border);
-      border-top-color:var(--accent);
-      border-radius:50%;
-      animation:spin 1s linear infinite;
+      border:3px solid var(--border); border-top-color:var(--accent);
+      border-radius:50%; animation:spin 1s linear infinite;
     }
 
-    /* Markdown */
-    .md h1 {
-      font-size:26px; font-weight:700;
-      margin-bottom:14px;
-      padding-bottom:12px;
-      border-bottom:2px solid var(--border);
-      line-height:1.35;
+    /* ── Bulk Output ── */
+    #bulkOutput {
+      flex:1; display:none; flex-direction:column; overflow:hidden;
     }
-    .md h2 {
-      font-size:19px; font-weight:600;
-      margin-top:30px; margin-bottom:10px;
-      color:var(--text);
+
+    /* Progress bar */
+    .bulk-progress {
+      padding:14px 20px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:14px; flex-shrink:0;
     }
-    .md h3 {
-      font-size:16px; font-weight:600;
-      margin-top:22px; margin-bottom:8px;
-      color:var(--text-dim);
+    .progress-track {
+      flex:1; height:6px; background:var(--surface2);
+      border-radius:3px; overflow:hidden;
     }
-    .md p     { margin-bottom:14px; line-height:1.82; }
+    .progress-fill {
+      height:100%; width:0%;
+      background:linear-gradient(90deg,#6366f1,#818cf8);
+      border-radius:3px; transition:width .4s ease;
+    }
+    .progress-label { font-size:12px; color:var(--text-muted); white-space:nowrap; }
+    .progress-label strong { color:var(--accent-l); }
+
+    /* Bulk list */
+    .bulk-list { flex:1; overflow-y:auto; padding:14px 18px; display:flex; flex-direction:column; gap:8px; }
+    .bi {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--rsm); padding:11px 14px;
+      display:flex; align-items:center; gap:12px; transition:.2s;
+    }
+    .bi.done  { border-color:rgba(16,185,129,.25); }
+    .bi.error { border-color:rgba(239,68,68,.25); }
+    .bi.active { border-color:var(--accent); background:var(--accent-dim); }
+
+    .bi-icon { font-size:16px; flex-shrink:0; width:20px; text-align:center; }
+    .bi-icon .mini-spin {
+      width:14px; height:14px; display:inline-block;
+      border:2px solid var(--border); border-top-color:var(--accent-l);
+      border-radius:50%; animation:spin .7s linear infinite;
+    }
+    .bi-body { flex:1; min-width:0; }
+    .bi-title {
+      font-size:13.5px; font-weight:500;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .bi-title.placeholder { color:var(--text-muted); font-weight:400; }
+    .bi-meta { font-size:11.5px; color:var(--text-muted); margin-top:2px; }
+    .bi-actions { display:flex; gap:5px; flex-shrink:0; }
+    .bi-btn {
+      background:var(--surface2); border:1px solid var(--border);
+      color:var(--text-dim); padding:4px 9px;
+      border-radius:5px; cursor:pointer; font-size:12px; transition:.2s; white-space:nowrap;
+    }
+    .bi-btn:hover { border-color:var(--accent); color:var(--accent-l); }
+    .bi-btn.ok { border-color:var(--success); color:var(--success); }
+
+    /* Bulk footer */
+    .bulk-footer {
+      padding:12px 18px; border-top:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+      flex-shrink:0;
+    }
+    .bulk-stats { font-size:12px; color:var(--text-muted); }
+    .bulk-stats strong { color:var(--text-dim); }
+    .zip-btn {
+      background:linear-gradient(135deg,#059669,#047857);
+      color:#fff; border:none; border-radius:var(--rsm);
+      padding:8px 18px; font-size:13px; font-weight:600;
+      cursor:pointer; transition:.2s; display:flex; align-items:center; gap:6px;
+    }
+    .zip-btn:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(5,150,105,.35); }
+    .zip-btn:disabled { opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
+
+    /* ── Markdown ── */
+    .md h1 { font-size:26px; font-weight:700; margin-bottom:14px; padding-bottom:12px; border-bottom:2px solid var(--border); line-height:1.35; }
+    .md h2 { font-size:19px; font-weight:600; margin-top:30px; margin-bottom:10px; }
+    .md h3 { font-size:16px; font-weight:600; margin-top:22px; margin-bottom:8px; color:var(--text-dim); }
+    .md p { margin-bottom:14px; line-height:1.82; }
     .md ul, .md ol { margin:10px 0 14px 22px; }
-    .md li    { margin-bottom:5px; line-height:1.75; }
-    .md strong { color:var(--accent-light); font-weight:600; }
-    .md em     { color:var(--text-dim); }
-    .md hr     { border:none; border-top:1px solid var(--border); margin:26px 0; }
-    .md blockquote {
-      border-left:3px solid var(--accent);
-      padding:8px 16px; margin:14px 0;
-      background:var(--accent-dim);
-      border-radius:0 var(--r-sm) var(--r-sm) 0;
-      color:var(--text-dim);
-    }
-    .md code {
-      background:var(--surface3);
-      padding:2px 6px; border-radius:4px;
-      font-size:13px; color:var(--accent-light);
-    }
-    .md pre { background:var(--surface2); padding:14px; border-radius:var(--r-sm); overflow-x:auto; }
-    .md pre code { background:none; padding:0; }
+    .md li { margin-bottom:5px; line-height:1.75; }
+    .md strong { color:var(--accent-l); font-weight:600; }
+    .md em { color:var(--text-dim); }
+    .md hr { border:none; border-top:1px solid var(--border); margin:26px 0; }
+    .md blockquote { border-left:3px solid var(--accent); padding:8px 16px; margin:14px 0; background:var(--accent-dim); border-radius:0 var(--rsm) var(--rsm) 0; color:var(--text-dim); }
+    .md code { background:var(--surface3); padding:2px 6px; border-radius:4px; font-size:13px; color:var(--accent-l); }
 
-    /* ── History Modal ────────────────────────────── */
+    /* ── History Modal ── */
     .overlay {
-      position:fixed; inset:0;
-      background:rgba(0,0,0,.65);
+      position:fixed; inset:0; background:rgba(0,0,0,.65);
       display:flex; align-items:center; justify-content:center;
-      z-index:200;
-      opacity:0; pointer-events:none;
-      transition:opacity .2s;
+      z-index:200; opacity:0; pointer-events:none; transition:opacity .2s;
     }
     .overlay.show { opacity:1; pointer-events:all; }
-
     .modal {
-      background:var(--surface);
-      border:1px solid var(--border);
-      border-radius:var(--r);
-      width:660px; max-width:92vw;
-      max-height:78vh;
-      display:flex; flex-direction:column;
-      overflow:hidden;
-      transform:translateY(6px);
-      transition:transform .2s;
+      background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
+      width:660px; max-width:92vw; max-height:78vh;
+      display:flex; flex-direction:column; overflow:hidden;
+      transform:translateY(6px); transition:transform .2s;
     }
     .overlay.show .modal { transform:translateY(0); }
-
-    .modal-head {
-      padding:18px 22px;
-      border-bottom:1px solid var(--border);
-      display:flex; align-items:center; gap:10px;
-    }
+    .modal-head { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
     .modal-head h2 { font-size:15px; font-weight:600; flex:1; }
-    .modal-close {
-      background:none; border:none;
-      color:var(--text-muted); cursor:pointer;
-      font-size:18px; line-height:1; padding:3px;
-    }
+    .modal-close { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:18px; line-height:1; padding:3px; }
     .modal-close:hover { color:var(--text); }
-
     .modal-body { padding:14px 22px; overflow-y:auto; flex:1; }
-
     .hist-item {
-      padding:12px 14px;
-      border:1px solid var(--border);
-      border-radius:var(--r-sm);
-      margin-bottom:8px;
-      cursor:pointer;
-      transition:.2s;
+      padding:12px 14px; border:1px solid var(--border); border-radius:var(--rsm);
+      margin-bottom:8px; cursor:pointer; transition:.2s;
       display:flex; align-items:flex-start; gap:10px;
     }
     .hist-item:hover { border-color:var(--accent); background:var(--accent-dim); }
     .hist-info { flex:1; min-width:0; }
-    .hist-title {
-      font-size:13.5px; font-weight:500;
-      margin-bottom:4px;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
+    .hist-title { font-size:13.5px; font-weight:500; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .hist-meta { font-size:11.5px; color:var(--text-muted); display:flex; gap:10px; flex-wrap:wrap; }
-    .del-btn {
-      background:none; border:none;
-      color:var(--text-muted); cursor:pointer;
-      font-size:14px; padding:3px; border-radius:4px;
-      flex-shrink:0; transition:.2s; line-height:1;
-    }
+    .del-btn { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:14px; padding:3px; border-radius:4px; flex-shrink:0; transition:.2s; }
     .del-btn:hover { color:var(--error); background:rgba(239,68,68,.12); }
-
     .empty-msg { text-align:center; color:var(--text-muted); padding:36px; font-size:13.5px; }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar        { width:5px; }
-    ::-webkit-scrollbar-track  { background:transparent; }
-    ::-webkit-scrollbar-thumb  { background:var(--border); border-radius:3px; }
-    ::-webkit-scrollbar-thumb:hover { background:var(--border-light); }
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:#363a5e; }
 
     @media (max-width:720px) {
       main { grid-template-columns:1fr; grid-template-rows:auto 1fr; }
@@ -350,69 +320,125 @@
 <main>
   <!-- ── 입력 패널 ── -->
   <div class="input-panel">
-    <div class="section-label">입력 설정</div>
-
-    <div class="field">
-      <label>키워드 <span class="req">필수</span></label>
-      <textarea id="keywords" rows="3"
-        placeholder="예: 다이어트, 건강한 식단, 체중 감량&#10;(쉼표로 구분해 여러 개 입력 가능)"></textarea>
+    <!-- 모드 탭 -->
+    <div class="mode-tabs">
+      <button class="mtab active" id="tab-single" onclick="setMode('single')">단건 생성</button>
+      <button class="mtab"        id="tab-bulk"   onclick="setMode('bulk')">⚡ 다량 생성</button>
     </div>
 
-    <div class="field">
-      <label>특징 / 옵션 <span class="opt">선택</span></label>
-      <textarea id="features" rows="3"
-        placeholder="예: 30대 직장인 타겟, 과학적 근거 포함&#10;실천 가능한 팁 위주, 전문가 인용 포함"></textarea>
-    </div>
-
-    <div class="row2">
-      <div class="field">
-        <label>글 톤</label>
-        <select id="tone">
-          <option value="정보성">📊 정보성</option>
-          <option value="친근한">😊 친근한</option>
-          <option value="전문적">🎓 전문적</option>
-          <option value="감성적">💝 감성적</option>
-        </select>
+    <!-- ── 단건 모드 ── -->
+    <div id="singleSection">
+      <div class="field" style="margin-bottom:2px">
+        <label>키워드 <span class="req">필수</span></label>
+        <textarea id="keywords" rows="3"
+          placeholder="예: 다이어트, 건강한 식단, 체중 감량&#10;(쉼표로 구분해 여러 개 입력 가능)"></textarea>
       </div>
       <div class="field">
-        <label>글 길이</label>
-        <select id="length">
-          <option value="짧게">📝 짧게</option>
-          <option value="보통" selected>📄 보통</option>
-          <option value="길게">📃 길게</option>
-        </select>
+        <label>특징 / 옵션 <span class="opt">선택</span></label>
+        <textarea id="features" rows="3"
+          placeholder="예: 30대 직장인 타겟, 과학적 근거 포함&#10;실천 가능한 팁 위주, 전문가 인용 포함"></textarea>
       </div>
+      <div class="row2">
+        <div class="field"><label>글 톤</label>
+          <select id="tone">
+            <option value="정보성">📊 정보성</option>
+            <option value="친근한">😊 친근한</option>
+            <option value="전문적">🎓 전문적</option>
+            <option value="감성적">💝 감성적</option>
+          </select>
+        </div>
+        <div class="field"><label>글 길이</label>
+          <select id="length">
+            <option value="짧게">📝 짧게</option>
+            <option value="보통" selected>📄 보통</option>
+            <option value="길게">📃 길게</option>
+          </select>
+        </div>
+      </div>
+      <button class="gen-btn" id="genBtn" onclick="generateSingle()">
+        <span id="btnIcon">✨</span><span id="btnText">블로그 글 생성</span>
+      </button>
+      <p class="shortcut-hint">Ctrl + Enter 로도 생성할 수 있습니다</p>
+      <div class="tip-box">
+        <strong>팁:</strong> 키워드는 구체적일수록 좋습니다.<br>
+        "운동" → "30분 홈트레이닝, 복근 운동, 초보자"처럼 타겟을 명확히 하면 더 좋은 글이 생성됩니다.
+      </div>
+      <div id="singleErr" style="display:none"></div>
     </div>
 
-    <button class="gen-btn" id="genBtn" onclick="generate()">
-      <span id="btnIcon">✨</span>
-      <span id="btnText">블로그 글 생성</span>
-    </button>
-    <p class="shortcut-hint">Ctrl + Enter 로도 생성할 수 있습니다</p>
-
-    <div class="tip-box">
-      <strong>팁:</strong> 키워드는 구체적일수록 좋습니다.<br>
-      "운동" → "30분 홈트레이닝, 복근 운동, 초보자"처럼 타겟을 명확히 하면 더 좋은 글이 생성됩니다.
+    <!-- ── 다량 모드 ── -->
+    <div id="bulkSection" style="display:none">
+      <div class="field">
+        <label>키워드 목록 <span class="req">필수</span></label>
+        <div class="bulk-hint">
+          각 줄에 키워드 1세트 = 블로그 글 1개 (최대 20개)<br>
+          특징은 <code>|</code> 로 구분: <code>키워드 | 특징</code>
+        </div>
+        <textarea id="bulkInput" rows="11"
+          placeholder="다이어트, 건강한 식단&#10;홈트레이닝, 복근 운동 | 초보자 대상, 30분&#10;건강한 아침 습관&#10;스트레스 해소법 | 직장인 타겟&#10;수면의 질 높이기"
+          oninput="updateBulkCount()"></textarea>
+        <div class="bulk-count" id="bulkCount">0개 작성 예정</div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>글 톤</label>
+          <select id="bulkTone">
+            <option value="정보성">📊 정보성</option>
+            <option value="친근한">😊 친근한</option>
+            <option value="전문적">🎓 전문적</option>
+            <option value="감성적">💝 감성적</option>
+          </select>
+        </div>
+        <div class="field"><label>글 길이</label>
+          <select id="bulkLength">
+            <option value="짧게">📝 짧게</option>
+            <option value="보통" selected>📄 보통</option>
+            <option value="길게">📃 길게</option>
+          </select>
+        </div>
+      </div>
+      <button class="gen-btn" id="bulkGenBtn" onclick="generateBulk()">
+        <span id="bulkBtnIcon">⚡</span><span id="bulkBtnText">일괄 생성</span>
+      </button>
+      <div id="bulkErr" style="display:none"></div>
     </div>
-
-    <div id="errBox" style="display:none"></div>
   </div>
 
   <!-- ── 출력 패널 ── -->
   <div class="output-panel">
-    <div class="toolbar">
+    <!-- 단건 툴바 -->
+    <div class="toolbar" id="singleToolbar">
       <span class="out-title" id="outTitle">생성된 글이 여기에 표시됩니다</span>
-      <span class="out-meta" id="outMeta"></span>
-      <button class="act-btn" id="copyBtn" onclick="copyMd()" style="display:none">📋 복사</button>
-      <button class="act-btn" id="dlMdBtn" onclick="dlMd()" style="display:none">⬇ .md</button>
-      <button class="act-btn" id="dlHtmlBtn" onclick="dlHtml()" style="display:none">⬇ .html</button>
+      <span class="out-meta"  id="outMeta"></span>
+      <button class="act-btn" id="copyBtn"    onclick="copyMd()"   style="display:none">📋 복사</button>
+      <button class="act-btn" id="dlMdBtn"    onclick="dlMd()"     style="display:none">⬇ .md</button>
+      <button class="act-btn" id="dlHtmlBtn"  onclick="dlHtml()"   style="display:none">⬇ .html</button>
     </div>
 
-    <div class="output-body" id="outputBody">
+    <!-- 단건 출력 -->
+    <div class="output-body" id="singleOutput">
       <div class="center-state">
         <div class="icon">✍️</div>
         <h2>블로그 글을 생성해보세요</h2>
         <p>키워드를 입력하고 생성 버튼을 누르면 Claude AI가 맞춤형 블로그 글을 작성합니다.</p>
+      </div>
+    </div>
+
+    <!-- 다량 출력 -->
+    <div id="bulkOutput">
+      <div class="bulk-progress" id="bulkProgress" style="display:none">
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-label" id="progressLabel">준비 중...</div>
+      </div>
+      <div class="bulk-list" id="bulkList">
+        <div class="center-state" style="height:100%">
+          <div class="icon">⚡</div>
+          <h2>다량 생성 모드</h2>
+          <p>각 줄에 키워드를 입력하면 한 번에 여러 글을 자동 생성합니다.</p>
+        </div>
+      </div>
+      <div class="bulk-footer" id="bulkFooter" style="display:none">
+        <div class="bulk-stats" id="bulkStats"></div>
+        <button class="zip-btn" id="zipBtn" onclick="downloadAllZip()">⬇ 전체 ZIP 다운로드</button>
       </div>
     </div>
   </div>
@@ -425,76 +451,79 @@
       <h2>📋 생성 이력</h2>
       <button class="modal-close" onclick="closeHistory()">✕</button>
     </div>
-    <div class="modal-body" id="histBody">
-      <div class="empty-msg">불러오는 중...</div>
-    </div>
+    <div class="modal-body" id="histBody"><div class="empty-msg">불러오는 중...</div></div>
   </div>
 </div>
 
 <script>
-  marked.setOptions({ breaks: true, gfm: true });
+  marked.setOptions({ breaks:true, gfm:true });
 
-  let cur = null; // 현재 표시 중인 글
+  /* ── 상태 ── */
+  let mode        = 'single';
+  let curPost     = null;       // 단건 현재 글
+  let bulkResults = [];         // 다량 결과 배열
+  let bulkRunning = false;
 
-  /* ── 생성 ─────────────────────────────────────── */
-  async function generate() {
-    const keywords = document.getElementById('keywords').value.trim();
-    const features = document.getElementById('features').value.trim();
-    const tone     = document.getElementById('tone').value;
-    const length   = document.getElementById('length').value;
+  /* ═══════════════════════════════════════════
+     모드 전환
+  ═══════════════════════════════════════════ */
+  function setMode(m) {
+    mode = m;
+    document.getElementById('tab-single').classList.toggle('active', m === 'single');
+    document.getElementById('tab-bulk').classList.toggle('active',   m === 'bulk');
+    document.getElementById('singleSection').style.display  = m === 'single' ? '' : 'none';
+    document.getElementById('bulkSection').style.display    = m === 'bulk'   ? '' : 'none';
+    document.getElementById('singleToolbar').style.display  = m === 'single' ? '' : 'none';
+    document.getElementById('singleOutput').style.display   = m === 'single' ? '' : 'none';
+    document.getElementById('bulkOutput').style.display     = m === 'bulk'   ? 'flex' : 'none';
+  }
 
-    if (!keywords) { showErr('키워드를 입력해주세요.'); return; }
-    hideErr();
-    setBusy(true);
-    showLoading();
+  /* ═══════════════════════════════════════════
+     단건 생성
+  ═══════════════════════════════════════════ */
+  async function generateSingle() {
+    const keywords = V('keywords'), features = V('features');
+    const tone = V('tone'), length = V('length');
+    if (!keywords) { showErr('singleErr','키워드를 입력해주세요.'); return; }
+    hideErr('singleErr'); setSingleBusy(true); showSingleLoading();
 
     try {
       const res  = await fetch('/api/generate', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ keywords, features, tone, length })
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ keywords, features, tone, length })
       });
       const data = await res.json();
-      if (!res.ok) { showErr(data.error || '글 생성에 실패했습니다.'); showEmpty(); return; }
-      cur = data;
-      renderPost(data);
-    } catch {
-      showErr('서버 연결 실패. 서버가 실행 중인지 확인하세요 (npm start).');
-      showEmpty();
-    } finally {
-      setBusy(false);
-    }
+      if (!res.ok) { showErr('singleErr', data.error || '글 생성 실패'); showSingleEmpty(); return; }
+      curPost = data;
+      renderSingle(data);
+    } catch { showErr('singleErr','서버 연결 실패. 서버가 실행 중인지 확인하세요.'); showSingleEmpty(); }
+    finally   { setSingleBusy(false); }
   }
 
-  /* ── 렌더링 ──────────────────────────────────── */
-  function renderPost(data) {
+  function renderSingle(data) {
     document.getElementById('outTitle').textContent = data.title;
-    document.getElementById('outMeta').textContent =
-      `${data.model} · ${(data.tokensIn || data.tokens_in) + (data.tokensOut || data.tokens_out)} tokens`;
-
-    ['copyBtn','dlMdBtn','dlHtmlBtn'].forEach(id =>
-      document.getElementById(id).style.display = 'flex');
-
-    document.getElementById('outputBody').innerHTML =
+    document.getElementById('outMeta').textContent  =
+      `${data.model} · ${(data.tokensIn||data.tokens_in)+(data.tokensOut||data.tokens_out)} tokens`;
+    ['copyBtn','dlMdBtn','dlHtmlBtn'].forEach(id => document.getElementById(id).style.display='flex');
+    document.getElementById('singleOutput').innerHTML =
       `<div class="md" style="max-width:740px">${marked.parse(data.content)}</div>`;
   }
 
-  function showLoading() {
-    document.getElementById('outputBody').innerHTML = `
+  function showSingleLoading() {
+    document.getElementById('singleOutput').innerHTML = `
       <div class="center-state">
         <div class="load-ring"></div>
         <p>Claude AI가 블로그 글을 작성하고 있습니다…<br>
-           <small style="color:var(--text-muted)">보통 10~30초 정도 소요됩니다</small></p>
+           <small style="color:var(--text-muted)">보통 10~30초 소요됩니다</small></p>
       </div>`;
   }
 
-  function showEmpty() {
-    cur = null;
+  function showSingleEmpty() {
+    curPost = null;
     document.getElementById('outTitle').textContent = '생성된 글이 여기에 표시됩니다';
     document.getElementById('outMeta').textContent  = '';
-    ['copyBtn','dlMdBtn','dlHtmlBtn'].forEach(id =>
-      document.getElementById(id).style.display = 'none');
-    document.getElementById('outputBody').innerHTML = `
+    ['copyBtn','dlMdBtn','dlHtmlBtn'].forEach(id => document.getElementById(id).style.display='none');
+    document.getElementById('singleOutput').innerHTML = `
       <div class="center-state">
         <div class="icon">✍️</div>
         <h2>블로그 글을 생성해보세요</h2>
@@ -502,96 +531,286 @@
       </div>`;
   }
 
-  /* ── 버튼 상태 ───────────────────────────────── */
-  function setBusy(busy) {
-    const btn  = document.getElementById('genBtn');
-    const icon = document.getElementById('btnIcon');
-    const txt  = document.getElementById('btnText');
-    btn.disabled = busy;
-    if (busy) {
-      icon.outerHTML = '<div class="spinner" id="btnIcon"></div>';
-      txt.textContent = '생성 중…';
-    } else {
-      document.getElementById('btnIcon').outerHTML = '<span id="btnIcon">✨</span>';
-      txt.textContent = '블로그 글 생성';
+  function setSingleBusy(busy) {
+    const btn=document.getElementById('genBtn');
+    btn.disabled=busy;
+    document.getElementById('btnIcon').outerHTML = busy
+      ? '<div class="spinner" id="btnIcon"></div>'
+      : '<span id="btnIcon">✨</span>';
+    document.getElementById('btnText').textContent = busy ? '생성 중…' : '블로그 글 생성';
+  }
+
+  /* ── 단건 액션 ── */
+  async function copyMd() {
+    if (!curPost) return;
+    await navigator.clipboard.writeText(curPost.content);
+    flash('copyBtn','✅ 복사됨','📋 복사');
+  }
+  function dlMd()   { if (curPost) dl(curPost.content, safe(curPost.title)+'.md', 'text/markdown;charset=utf-8'); }
+  function dlHtml() { if (curPost) dl(buildHtml(curPost.title,curPost.content), safe(curPost.title)+'.html','text/html;charset=utf-8'); }
+
+  /* ═══════════════════════════════════════════
+     다량 생성
+  ═══════════════════════════════════════════ */
+  function parseBulkInput() {
+    return document.getElementById('bulkInput').value
+      .split('\n')
+      .map(l => l.trim()).filter(l => l)
+      .map(l => {
+        const [kw, ft=''] = l.split('|').map(s=>s.trim());
+        return { keywords: kw, features: ft };
+      })
+      .filter(it => it.keywords);
+  }
+
+  function updateBulkCount() {
+    const n = parseBulkInput().length;
+    const el = document.getElementById('bulkCount');
+    el.textContent = n ? `${n}개 작성 예정` : '0개 작성 예정';
+    el.className = 'bulk-count' + (n ? ' has-items' : '');
+  }
+
+  async function generateBulk() {
+    if (bulkRunning) return;
+    const items = parseBulkInput();
+    if (!items.length) { showErr('bulkErr','키워드를 입력해주세요.'); return; }
+    if (items.length > 20) { showErr('bulkErr','최대 20개까지 입력 가능합니다.'); return; }
+    hideErr('bulkErr');
+
+    const tone   = document.getElementById('bulkTone').value;
+    const length = document.getElementById('bulkLength').value;
+
+    // 초기화
+    bulkResults = new Array(items.length).fill(null);
+    bulkRunning = true;
+    setBulkBusy(true);
+    document.getElementById('bulkFooter').style.display = 'none';
+
+    // 리스트 렌더링 (대기 상태)
+    initBulkList(items);
+
+    // 진행바 표시
+    const prog = document.getElementById('bulkProgress');
+    prog.style.display = 'flex';
+    updateProgress(0, items.length);
+
+    try {
+      const res = await fetch('/api/generate/bulk', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ items, tone, length })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(()=>({error:'요청 실패'}));
+        showErr('bulkErr', err.error || '다량 생성 요청 실패');
+        bulkRunning = false; setBulkBusy(false); return;
+      }
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buf     = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream:true });
+        const lines = buf.split('\n');
+        buf = lines.pop(); // 마지막 미완성 줄은 버퍼에 보관
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try { handleBulkEvent(JSON.parse(line.slice(6))); }
+          catch {}
+        }
+      }
+
+    } catch(e) {
+      showErr('bulkErr', '서버 연결 실패: ' + e.message);
+    } finally {
+      bulkRunning = false; setBulkBusy(false);
     }
   }
 
-  function showErr(msg) {
-    const b = document.getElementById('errBox');
+  function handleBulkEvent(ev) {
+    switch (ev.type) {
+      case 'start':
+        updateProgress(0, ev.total);
+        break;
+
+      case 'progress':
+        setBiState(ev.index, 'active', '<div class="mini-spin"></div>', ev.keywords, '생성 중…');
+        break;
+
+      case 'done': {
+        bulkResults[ev.index] = ev;
+        const doneCount = bulkResults.filter(Boolean).length;
+        const total     = bulkResults.length;
+        updateProgress(doneCount, total);
+        setBiDone(ev.index, ev.title, ev.tokensIn + ev.tokensOut);
+        if (doneCount === total) finalizeBulk();
+        break;
+      }
+
+      case 'error':
+        setBiState(ev.index, 'error', '❌', ev.keywords, `오류: ${ev.error}`);
+        break;
+
+      case 'complete':
+        finalizeBulk();
+        break;
+    }
+  }
+
+  function initBulkList(items) {
+    document.getElementById('bulkList').innerHTML = items.map((it, i) => `
+      <div class="bi" id="bi-${i}">
+        <div class="bi-icon" id="bi-icon-${i}">◌</div>
+        <div class="bi-body">
+          <div class="bi-title placeholder" id="bi-title-${i}">${esc(it.keywords)}</div>
+          <div class="bi-meta"              id="bi-meta-${i}">대기 중</div>
+        </div>
+        <div class="bi-actions" id="bi-actions-${i}" style="display:none"></div>
+      </div>`).join('');
+  }
+
+  function setBiState(i, cls, iconHtml, title, meta) {
+    const el = document.getElementById(`bi-${i}`);
+    el.className = 'bi ' + cls;
+    document.getElementById(`bi-icon-${i}`).innerHTML  = iconHtml;
+    document.getElementById(`bi-title-${i}`).textContent = title;
+    document.getElementById(`bi-title-${i}`).className    = 'bi-title';
+    document.getElementById(`bi-meta-${i}`).textContent  = meta;
+  }
+
+  function setBiDone(i, title, tokens) {
+    const el = document.getElementById(`bi-${i}`);
+    el.className = 'bi done';
+    document.getElementById(`bi-icon-${i}`).textContent  = '✅';
+    document.getElementById(`bi-title-${i}`).textContent = title;
+    document.getElementById(`bi-title-${i}`).className   = 'bi-title';
+    document.getElementById(`bi-meta-${i}`).textContent  = `${tokens.toLocaleString()} tokens`;
+    const acts = document.getElementById(`bi-actions-${i}`);
+    acts.style.display = 'flex';
+    acts.innerHTML = `
+      <button class="bi-btn" id="bi-copy-${i}" onclick="copyBulkItem(${i})">복사</button>
+      <button class="bi-btn" onclick="dlBulkMd(${i})">↓.md</button>
+      <button class="bi-btn" onclick="dlBulkHtml(${i})">↓.html</button>`;
+  }
+
+  function updateProgress(done, total) {
+    const pct = total ? Math.round(done / total * 100) : 0;
+    document.getElementById('progressFill').style.width  = pct + '%';
+    document.getElementById('progressLabel').innerHTML   =
+      `<strong>${done}</strong> / ${total} 완료 (${pct}%)`;
+  }
+
+  function finalizeBulk() {
+    const ok   = bulkResults.filter(r => r && r.content).length;
+    const fail = bulkResults.filter(r => r === null || (r && r.type==='error')).length;
+    const totalTokens = bulkResults.reduce((s,r) => s + (r ? (r.tokensIn||0)+(r.tokensOut||0) : 0), 0);
+
+    document.getElementById('bulkStats').innerHTML =
+      `<strong>${ok}개</strong> 완료 · ${fail>0?`<span style="color:var(--error)">${fail}개 실패</span> · `:''}총 <strong>${totalTokens.toLocaleString()}</strong> tokens`;
+
+    const footer = document.getElementById('bulkFooter');
+    footer.style.display = 'flex';
+    document.getElementById('zipBtn').disabled = ok === 0;
+  }
+
+  function setBulkBusy(busy) {
+    const btn = document.getElementById('bulkGenBtn');
+    btn.disabled = busy;
+    document.getElementById('bulkBtnIcon').outerHTML = busy
+      ? '<div class="spinner" id="bulkBtnIcon"></div>'
+      : '<span id="bulkBtnIcon">⚡</span>';
+    document.getElementById('bulkBtnText').textContent = busy ? '생성 중…' : '일괄 생성';
+  }
+
+  /* ── 다량 개별 액션 ── */
+  async function copyBulkItem(i) {
+    const r = bulkResults[i]; if (!r) return;
+    await navigator.clipboard.writeText(r.content);
+    flash(`bi-copy-${i}`, '✅', '복사');
+  }
+  function dlBulkMd(i) {
+    const r = bulkResults[i]; if (!r?.content) return;
+    dl(r.content, `${String(i+1).padStart(2,'0')}_${safe(r.title)}.md`, 'text/markdown;charset=utf-8');
+  }
+  function dlBulkHtml(i) {
+    const r = bulkResults[i]; if (!r?.content) return;
+    dl(buildHtml(r.title,r.content), `${String(i+1).padStart(2,'0')}_${safe(r.title)}.html`, 'text/html;charset=utf-8');
+  }
+
+  async function downloadAllZip() {
+    const zip    = new JSZip();
+    const folder = zip.folder('blog-posts');
+    bulkResults.forEach((r, i) => {
+      if (r?.content) folder.file(`${String(i+1).padStart(2,'0')}_${safe(r.title)}.md`, r.content);
+    });
+    const blob = await zip.generateAsync({ type:'blob', compression:'DEFLATE' });
+    dl(blob, `blog-posts-${new Date().toISOString().slice(0,10)}.zip`, 'application/zip');
+  }
+
+  /* ═══════════════════════════════════════════
+     공통 유틸
+  ═══════════════════════════════════════════ */
+  function V(id) { return document.getElementById(id).value.trim(); }
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function safe(s) { return String(s).replace(/[<>:"/\\|?*]/g,'_').substring(0,60); }
+
+  function dl(content, filename, type) {
+    const blob = content instanceof Blob ? content : new Blob([content],{type});
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=filename; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function buildHtml(title, content) {
+    return `<!DOCTYPE html>
+<html lang="ko">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(title)}</title>
+<style>body{font-family:'Noto Sans KR',sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.8;color:#333}
+h1{font-size:2em;border-bottom:2px solid #eee;padding-bottom:12px;margin-bottom:20px}
+h2{font-size:1.4em;margin-top:2.2em;color:#444}strong{color:#5b6cf8}
+hr{border:none;border-top:1px solid #eee;margin:2em 0}p{margin:1em 0}ul,ol{margin:.5em 0 1em 1.5em}</style>
+</head><body>${marked.parse(content)}</body></html>`;
+  }
+
+  function flash(id, tempLabel, origLabel) {
+    const btn = document.getElementById(id); if(!btn) return;
+    btn.textContent = tempLabel; btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = origLabel; btn.classList.remove('ok'); }, 2000);
+  }
+
+  function showErr(boxId, msg) {
+    const b = document.getElementById(boxId);
     b.innerHTML = `<div class="err-box">⚠️ ${esc(msg)}</div>`;
     b.style.display = 'block';
   }
-  function hideErr() { document.getElementById('errBox').style.display = 'none'; }
+  function hideErr(boxId) { document.getElementById(boxId).style.display = 'none'; }
 
-  /* ── 액션 버튼 ───────────────────────────────── */
-  async function copyMd() {
-    if (!cur) return;
-    await navigator.clipboard.writeText(cur.content);
-    flash('copyBtn', '✅ 복사됨');
-  }
-
-  function dlMd() {
-    if (!cur) return;
-    dl(cur.content, safeFilename(cur.title) + '.md', 'text/markdown;charset=utf-8');
-  }
-
-  function dlHtml() {
-    if (!cur) return;
-    const html = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(cur.title)}</title>
-<style>
-  body{font-family:'Noto Sans KR',sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.8;color:#333}
-  h1{font-size:2em;border-bottom:2px solid #eee;padding-bottom:12px;margin-bottom:20px}
-  h2{font-size:1.4em;margin-top:2.2em;color:#444}
-  strong{color:#5b6cf8}hr{border:none;border-top:1px solid #eee;margin:2em 0}
-  ul,ol{margin:.5em 0 1em 1.5em}p{margin:1em 0}
-  blockquote{border-left:3px solid #6366f1;padding:8px 16px;background:#f5f5ff;margin:1em 0}
-</style>
-</head>
-<body>${marked.parse(cur.content)}</body>
-</html>`;
-    dl(html, safeFilename(cur.title) + '.html', 'text/html;charset=utf-8');
-  }
-
-  function dl(content, filename, type) {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([content], { type }));
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  function flash(id, label) {
-    const btn = document.getElementById(id);
-    const orig = btn.textContent;
-    btn.textContent = label;
-    btn.classList.add('ok');
-    setTimeout(() => { btn.textContent = orig; btn.classList.remove('ok'); }, 2000);
-  }
-
-  /* ── 이력 ────────────────────────────────────── */
+  /* ═══════════════════════════════════════════
+     이력
+  ═══════════════════════════════════════════ */
   async function openHistory() {
     document.getElementById('histOverlay').classList.add('show');
     await loadHistory();
   }
   function closeHistory() { document.getElementById('histOverlay').classList.remove('show'); }
-  function backdropClose(e) { if (e.target.id === 'histOverlay') closeHistory(); }
+  function backdropClose(e) { if (e.target.id==='histOverlay') closeHistory(); }
 
   async function loadHistory() {
     const body = document.getElementById('histBody');
     body.innerHTML = '<div class="empty-msg">불러오는 중…</div>';
     try {
       const posts = await (await fetch('/api/posts')).json();
-      if (!posts.length) { body.innerHTML = '<div class="empty-msg">아직 생성된 글이 없습니다.</div>'; return; }
+      if (!posts.length) { body.innerHTML='<div class="empty-msg">아직 생성된 글이 없습니다.</div>'; return; }
       body.innerHTML = posts.map(p => `
         <div class="hist-item" onclick="loadPost(${p.id})">
           <div class="hist-info">
-            <div class="hist-title">${esc(p.title || p.keywords)}</div>
+            <div class="hist-title">${esc(p.title||p.keywords)}</div>
             <div class="hist-meta">
               <span>🔑 ${esc(p.keywords)}</span>
               <span>${esc(p.tone)} · ${esc(p.length)}</span>
@@ -601,35 +820,35 @@
           </div>
           <button class="del-btn" onclick="delPost(event,${p.id})" title="삭제">🗑</button>
         </div>`).join('');
-    } catch { body.innerHTML = '<div class="empty-msg">이력 불러오기 실패</div>'; }
+    } catch { body.innerHTML='<div class="empty-msg">이력 불러오기 실패</div>'; }
   }
 
   async function loadPost(id) {
-    closeHistory();
+    closeHistory(); setMode('single');
     try {
       const p = await (await fetch(`/api/posts/${id}`)).json();
-      cur = { ...p, tokensIn: p.tokens_in, tokensOut: p.tokens_out };
-      renderPost(cur);
-    } catch { showErr('글을 불러오지 못했습니다.'); }
+      curPost = { ...p, tokensIn:p.tokens_in, tokensOut:p.tokens_out };
+      renderSingle(curPost);
+    } catch { showErr('singleErr','글을 불러오지 못했습니다.'); }
   }
 
   async function delPost(e, id) {
     e.stopPropagation();
     if (!confirm('이 글을 삭제할까요?')) return;
-    await fetch(`/api/posts/${id}`, { method: 'DELETE' });
+    await fetch(`/api/posts/${id}`, { method:'DELETE' });
     await loadHistory();
   }
 
-  /* ── 유틸 ────────────────────────────────────── */
-  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function safeFilename(s) { return String(s).replace(/[<>:"/\\|?*]/g,'_').substring(0,60); }
   function fmtDate(ts) {
     return new Date(ts*1000).toLocaleDateString('ko-KR',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
   }
 
-  /* ── 단축키 ──────────────────────────────────── */
+  /* ── 단축키 ── */
   document.addEventListener('keydown', e => {
-    if (e.ctrlKey && e.key === 'Enter') generate();
+    if (e.ctrlKey && e.key === 'Enter') {
+      if (mode === 'single') generateSingle();
+      else generateBulk();
+    }
     if (e.key === 'Escape') closeHistory();
   });
 </script>

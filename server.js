@@ -161,6 +161,95 @@ app.delete('/api/posts/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// ── 다량 생성 (SSE 스트리밍) ─────────────────────────────
+const bulkLimiter = rateLimit({
+  windowMs: 5 * 60_000,
+  max: 5,
+  message: { error: '5분에 최대 5회 다량 생성 가능합니다.' }
+});
+
+app.post('/api/generate/bulk', bulkLimiter, async (req, res) => {
+  const { items, tone = '정보성', length = '보통' } = req.body;
+
+  if (!Array.isArray(items) || !items.length)
+    return res.status(400).json({ error: '생성할 항목이 없습니다.' });
+
+  const valid = items.filter(it => it.keywords?.trim());
+  if (!valid.length)
+    return res.status(400).json({ error: '유효한 키워드가 없습니다.' });
+  if (valid.length > 20)
+    return res.status(400).json({ error: '한 번에 최대 20개까지 생성 가능합니다.' });
+  if (!process.env.ANTHROPIC_API_KEY)
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' });
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  let cancelled = false;
+  req.on('close', () => { cancelled = true; });
+
+  const send = (data) => {
+    if (!res.writableEnded && !cancelled)
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  send({ type: 'start', total: valid.length });
+
+  for (let i = 0; i < valid.length; i++) {
+    if (cancelled) break;
+
+    const { keywords, features = '' } = valid[i];
+    send({ type: 'progress', index: i, keywords: keywords.trim() });
+
+    try {
+      const message = await anthropic.messages.create({
+        model:      process.env.MODEL || 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        system: `당신은 SEO와 콘텐츠 마케팅에 특화된 한국어 전문 블로그 작가입니다.
+독자가 처음부터 끝까지 읽고 싶어지는 매력적인 블로그 글을 마크다운 형식으로 작성합니다.
+절대로 영어로 작성하지 않으며, 모든 글은 한국어로 작성합니다.`,
+        messages: [{ role: 'user', content: buildPrompt(keywords.trim(), features.trim(), tone, length) }]
+      });
+
+      const content    = message.content[0].text;
+      const titleMatch = content.match(/^#\s+(.+)/m);
+      const title      = titleMatch ? titleMatch[1].trim() : keywords.split(',')[0].trim();
+
+      const row = db.prepare(`
+        INSERT INTO posts (keywords, features, tone, length, title, content, model, tokens_in, tokens_out)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        keywords.trim(), features.trim() || null,
+        tone, length, title, content,
+        message.model,
+        message.usage.input_tokens,
+        message.usage.output_tokens
+      );
+
+      send({
+        type: 'done', index: i,
+        id: row.lastInsertRowid,
+        title, content,
+        keywords: keywords.trim(),
+        tokensIn:  message.usage.input_tokens,
+        tokensOut: message.usage.output_tokens
+      });
+
+    } catch (err) {
+      console.error(`[bulk #${i}]`, err.message);
+      send({ type: 'error', index: i, keywords: keywords.trim(), error: err.message });
+    }
+
+    if (i < valid.length - 1 && !cancelled)
+      await new Promise(r => setTimeout(r, 800));
+  }
+
+  if (!cancelled) send({ type: 'complete' });
+  res.end();
+});
+
 // ── Health check ────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
 
