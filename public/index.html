@@ -87,12 +87,25 @@
           border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
     @keyframes sp{to{transform:rotate(360deg)}}
 
-    /* Theme picker */
-    .tpicker{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .tbtn{width:34px;height:34px;border-radius:50%;border:3px solid transparent;
+    /* Theme picker & color inputs */
+    .tpicker{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px}
+    .tbtn{width:28px;height:28px;border-radius:50%;border:3px solid transparent;
           cursor:pointer;transition:.2s;flex-shrink:0}
     .tbtn.on{border-color:var(--tx);transform:scale(1.12)}
     .tbtn:hover:not(.on){transform:scale(1.08)}
+    input[type=color]{height:36px;padding:2px 3px;border-radius:var(--rs);
+          border:1px solid var(--bd);background:var(--sf2);cursor:pointer;width:100%}
+    /* Image upload */
+    .iup{border:1.5px dashed var(--bd);border-radius:var(--rs);padding:10px 12px;
+         display:flex;align-items:center;gap:8px;cursor:pointer;transition:.2s;
+         font-size:12.5px;color:var(--txm)}
+    .iup:hover{border-color:var(--ac);color:var(--acl)}
+    .iprev{display:flex;align-items:center;gap:8px;margin-top:4px}
+    .ithumb{width:38px;height:38px;border-radius:5px;background-size:cover;
+            background-position:center;border:1px solid var(--bd);flex-shrink:0}
+    .iname{font-size:12px;color:var(--txd);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .iclr{background:none;border:none;color:var(--txm);cursor:pointer;font-size:15px;padding:2px;line-height:1}
+    .iclr:hover{color:var(--er)}
 
     /* Error box */
     .ebox{font-size:12.5px;padding:9px 11px;background:rgba(239,68,68,.1);
@@ -295,20 +308,45 @@
       <div class="fld">
         <label>원고 <span class="req">필수</span></label>
         <div class="hint">블로그 글이나 원고를 붙여넣으면 6장의 카드뉴스로 자동 변환됩니다.</div>
-        <textarea id="ca" rows="12" placeholder="여기에 원고 또는 블로그 글을 붙여넣으세요..."></textarea>
+        <textarea id="ca" rows="10" placeholder="여기에 원고 또는 블로그 글을 붙여넣으세요..."></textarea>
       </div>
       <div class="fld">
         <label>브랜드명 <span class="opt">선택</span></label>
         <input type="text" id="cbr" placeholder="예: @myblog · www.myblog.com">
       </div>
       <div class="fld">
-        <label>테마 색상</label>
+        <label>배경 이미지 <span class="opt">선택 · 불투명도 20%</span></label>
+        <div class="iup" onclick="document.getElementById('bgf').click()">
+          <span>🖼</span><span id="iuplbl">이미지 파일 선택 (jpg · png · webp)</span>
+        </div>
+        <input type="file" id="bgf" accept="image/*" style="display:none" onchange="loadBgImg(event)">
+        <div class="iprev" id="iprev" style="display:none">
+          <div class="ithumb" id="ithumb"></div>
+          <span class="iname" id="iname"></span>
+          <button class="iclr" onclick="clearBgImg()" title="제거">✕</button>
+        </div>
+      </div>
+      <div class="fld">
+        <label>테마 색상 (직접 지정)</label>
+        <div class="r2">
+          <div class="fld">
+            <label style="font-size:11px;color:var(--txm)">그라디언트 시작</label>
+            <input type="color" id="cc1" value="#312e81" oninput="onClrChange()">
+          </div>
+          <div class="fld">
+            <label style="font-size:11px;color:var(--txm)">그라디언트 끝</label>
+            <input type="color" id="cc2" value="#6366f1" oninput="onClrChange()">
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--txm);margin-top:2px">빠른 선택</div>
         <div class="tpicker">
-          <button class="tbtn on" data-t="purple"  style="background:linear-gradient(135deg,#312e81,#6366f1)" title="인디고" onclick="setTheme(this,'purple')"></button>
-          <button class="tbtn"    data-t="coral"   style="background:linear-gradient(135deg,#9a3412,#f97316)" title="코랄"  onclick="setTheme(this,'coral')"></button>
-          <button class="tbtn"    data-t="emerald" style="background:linear-gradient(135deg,#064e3b,#10b981)" title="에메랄드" onclick="setTheme(this,'emerald')"></button>
-          <button class="tbtn"    data-t="rose"    style="background:linear-gradient(135deg,#881337,#f43f5e)" title="로즈"  onclick="setTheme(this,'rose')"></button>
-          <button class="tbtn"    data-t="slate"   style="background:linear-gradient(135deg,#0f172a,#475569)" title="슬레이트" onclick="setTheme(this,'slate')"></button>
+          <button class="tbtn on" style="background:linear-gradient(135deg,#312e81,#6366f1)" title="인디고"   onclick="setPreset(this,'#312e81','#6366f1')"></button>
+          <button class="tbtn"    style="background:linear-gradient(135deg,#9a3412,#f97316)" title="코랄"     onclick="setPreset(this,'#9a3412','#f97316')"></button>
+          <button class="tbtn"    style="background:linear-gradient(135deg,#064e3b,#10b981)" title="에메랄드" onclick="setPreset(this,'#064e3b','#10b981')"></button>
+          <button class="tbtn"    style="background:linear-gradient(135deg,#881337,#f43f5e)" title="로즈"     onclick="setPreset(this,'#881337','#f43f5e')"></button>
+          <button class="tbtn"    style="background:linear-gradient(135deg,#0f172a,#475569)" title="슬레이트" onclick="setPreset(this,'#0f172a','#475569')"></button>
+          <button class="tbtn"    style="background:linear-gradient(135deg,#854d0e,#ca8a04)" title="골드"     onclick="setPreset(this,'#854d0e','#ca8a04')"></button>
+          <button class="tbtn"    style="background:linear-gradient(135deg,#1e3a5f,#3b82f6)" title="블루"     onclick="setPreset(this,'#1e3a5f','#3b82f6')"></button>
         </div>
       </div>
       <button class="pbtn" id="cg" onclick="genCards()">
@@ -374,16 +412,59 @@
 marked.setOptions({breaks:true,gfm:true});
 
 /* ═══ STATE ═══ */
-let mode='single', curPost=null, bulkRes=[], bulkRun=false, cardTheme='purple', cardData=null;
+let mode='single', curPost=null, bulkRes=[], bulkRun=false, cardData=null, cardBgImage=null;
 
-/* ═══ THEMES ═══ */
-const TH={
-  purple: {g1:'#312e81',g2:'#6366f1',lb:'#eef2ff',lt:'#1e1b4b'},
-  coral:  {g1:'#9a3412',g2:'#f97316',lb:'#fff7ed',lt:'#7c2d12'},
-  emerald:{g1:'#064e3b',g2:'#10b981',lb:'#ecfdf5',lt:'#064e3b'},
-  rose:   {g1:'#881337',g2:'#f43f5e',lb:'#fff1f2',lt:'#881337'},
-  slate:  {g1:'#0f172a',g2:'#475569',lb:'#f8fafc',lt:'#0f172a'}
-};
+/* ── 테마 색상 헬퍼 ── */
+function getTheme(){
+  const g1=document.getElementById('cc1').value;
+  const g2=document.getElementById('cc2').value;
+  return { g1, g2, lb: lighten(g2,0.92), lt: darken(g1,0.25) };
+}
+function lighten(hex,a){
+  const[r,g,b]=parseHex(hex);
+  return `rgb(${Math.round(r+(255-r)*a)},${Math.round(g+(255-g)*a)},${Math.round(b+(255-b)*a)})`;
+}
+function darken(hex,a){
+  const[r,g,b]=parseHex(hex);
+  return `rgb(${Math.round(r*a)},${Math.round(g*a)},${Math.round(b*a)})`;
+}
+function parseHex(hex){return[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];}
+function setPreset(btn,g1,g2){
+  document.getElementById('cc1').value=g1;
+  document.getElementById('cc2').value=g2;
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('on',b===btn));
+  if(cardData) renderCards(cardData);
+}
+function onClrChange(){
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
+  if(cardData) renderCards(cardData);
+}
+
+/* ── 배경 이미지 ── */
+function loadBgImg(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      cardBgImage=img;
+      document.getElementById('ithumb').style.backgroundImage=`url(${ev.target.result})`;
+      document.getElementById('iname').textContent=f.name;
+      document.getElementById('iprev').style.display='flex';
+      document.getElementById('iuplbl').textContent='이미지 변경';
+      if(cardData) renderCards(cardData);
+    };
+    img.src=ev.target.result;
+  };
+  r.readAsDataURL(f);
+}
+function clearBgImg(){
+  cardBgImage=null;
+  document.getElementById('bgf').value='';
+  document.getElementById('iprev').style.display='none';
+  document.getElementById('iuplbl').textContent='이미지 파일 선택 (jpg · png · webp)';
+  if(cardData) renderCards(cardData);
+}
 
 /* ═══ MODE SWITCH ═══ */
 function setMode(m){
@@ -533,11 +614,7 @@ async function dlBulkZip(){
 }
 
 /* ═══ CARD NEWS ═══ */
-function setTheme(btn,t){
-  cardTheme=t;
-  document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('on',b===btn));
-  if(cardData) renderCards(cardData); // re-render with new theme
-}
+/* setTheme replaced by setPreset + onClrChange */
 
 async function genCards(){
   const art=V('ca');
@@ -578,15 +655,17 @@ function renderCards(data){
   });
 }
 
-/* ── Canvas drawing ── */
+/* ── Canvas drawing (600×600 output, 1080-unit coordinate space) ── */
 const FN='"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif';
 function drawCard(idx,card,brand){
   const cv=document.getElementById('cc'+idx);
   if(!cv)return;
-  const W=1080,H=1080;
-  cv.width=W; cv.height=H;
+  const CW=600;
+  cv.width=CW; cv.height=CW;
   const c=cv.getContext('2d');
-  const t=TH[cardTheme]||TH.purple;
+  c.scale(CW/1080,CW/1080);
+  const W=1080,H=1080;
+  const t=getTheme();
   const grad=(x1,y1,x2,y2)=>{const g=c.createLinearGradient(x1,y1,x2,y2);g.addColorStop(0,t.g1);g.addColorStop(1,t.g2);return g;};
   const wrap=(txt,x,y,mw,lh)=>{
     if(!txt)return y;
@@ -595,8 +674,26 @@ function drawCard(idx,card,brand){
     if(line){c.fillText(line,x,cy);cy+=lh;}return cy;
   };
 
+  // ── Background fill ──
   if(card.type==='title'||card.type==='cta'){
     c.fillStyle=grad(0,0,W,H); c.fillRect(0,0,W,H);
+  }else{
+    c.fillStyle=t.lb; c.fillRect(0,0,W,H);
+  }
+
+  // ── Background image at 20% opacity (cover fit) ──
+  if(cardBgImage){
+    c.save();
+    c.globalAlpha=0.2;
+    const iw=cardBgImage.naturalWidth||cardBgImage.width;
+    const ih=cardBgImage.naturalHeight||cardBgImage.height;
+    const sc=Math.max(W/iw,H/ih);
+    const dw=iw*sc,dh=ih*sc;
+    c.drawImage(cardBgImage,(W-dw)/2,(H-dh)/2,dw,dh);
+    c.restore();
+  }
+
+  if(card.type==='title'||card.type==='cta'){
     // Deco circles
     c.globalAlpha=0.1; c.fillStyle='#fff';
     [[W*.88,H*.1,220],[W*.06,H*.9,160],[W*.5,H,320]].forEach(([cx,cy,r])=>{c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);c.fill();});
@@ -615,8 +712,6 @@ function drawCard(idx,card,brand){
     // Brand
     if(brand){c.fillStyle='rgba(255,255,255,0.4)'; c.font=`27px ${FN}`; c.textAlign='center'; c.fillText(brand,W/2,H-54);}
   }else{
-    // Content card
-    c.fillStyle=t.lb; c.fillRect(0,0,W,H);
     // Top bar
     c.fillStyle=grad(0,0,W,0); c.fillRect(0,0,W,14);
     // Ghost number
