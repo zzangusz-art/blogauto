@@ -196,19 +196,31 @@ app.delete('/api/cardnews/:id', (req, res) => {
 // ── Unsplash 이미지 검색 프록시 ─────────────────────────
 app.get('/api/unsplash', async (req, res) => {
   const q = (req.query.q || '').trim();
+  console.log(`[unsplash] 요청: q="${q}"`);
+
   if (!q) return res.status(400).json({ error: '검색어가 필요합니다.' });
+
   const key = process.env.UNSPLASH_ACCESS_KEY;
-  if (!key) return res.json({ url: null });
+  if (!key) {
+    console.warn('[unsplash] API 키 없음 (UNSPLASH_ACCESS_KEY 환경변수 필요)');
+    return res.json({ url: null });
+  }
+
   try {
     const r = await fetch(
       `https://api.unsplash.com/photos/random?query=${encodeURIComponent(q)}&orientation=squarish&client_id=${key}`,
       { headers: { 'Accept-Version': 'v1' } }
     );
-    if (!r.ok) return res.json({ url: null });
+    if (!r.ok) {
+      console.error(`[unsplash] API 오류: ${r.status}`);
+      return res.json({ url: null });
+    }
     const d = await r.json();
-    res.json({ url: d.urls?.regular || d.urls?.small || null });
+    const url = d.urls?.regular || d.urls?.small || null;
+    console.log(`[unsplash] 응답: ${url ? '✓ URL 수신' : '✗ URL 없음'}`);
+    res.json({ url });
   } catch (e) {
-    console.error('[unsplash]', e.message);
+    console.error('[unsplash] 요청 실패:', e.message);
     res.json({ url: null });
   }
 });

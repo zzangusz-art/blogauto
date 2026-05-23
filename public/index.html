@@ -497,22 +497,51 @@ function clearBgImg(){
   if(cardData) renderCards(cardData);
 }
 async function autoFetchBg(q){
-  try{
-    const r=await fetch(`/api/unsplash?q=${encodeURIComponent(q)}`);
-    const d=await r.json();
-    if(!d.url) return;
-    const img=new Image();
-    img.crossOrigin='anonymous';
-    img.onload=()=>{
-      cardBgImage=img;
-      document.getElementById('ithumb').style.backgroundImage=`url(${d.url})`;
-      document.getElementById('iname').textContent='AI 자동 배경';
-      document.getElementById('iprev').style.display='flex';
-      document.getElementById('iuplbl').textContent='이미지 변경';
-      if(cardData) renderCards(cardData);
-    };
-    img.src=d.url;
-  }catch(e){console.warn('[bg]',e.message);}
+  return new Promise(resolve => {
+    if(!q){console.log('[bg] 검색어 없음'); resolve(); return;}
+
+    const timeout = setTimeout(()=>{
+      console.warn('[bg] 타임아웃 (3초)');
+      resolve();
+    }, 3000);
+
+    fetch(`/api/unsplash?q=${encodeURIComponent(q)}`)
+      .then(r=>{
+        if(!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(d=>{
+        console.log('[bg] Unsplash 응답:', d.url?'이미지 URL 수신':'URL 없음');
+        if(!d.url){clearTimeout(timeout); resolve(); return;}
+
+        const img=new Image();
+        img.crossOrigin='anonymous';
+
+        img.onload=()=>{
+          clearTimeout(timeout);
+          console.log('[bg] 이미지 로드 완료:', d.url);
+          cardBgImage=img;
+          document.getElementById('ithumb').style.backgroundImage=`url(${d.url})`;
+          document.getElementById('iname').textContent='AI 자동 배경 (Unsplash)';
+          document.getElementById('iprev').style.display='flex';
+          document.getElementById('iuplbl').textContent='이미지 변경';
+          resolve();
+        };
+
+        img.onerror=()=>{
+          clearTimeout(timeout);
+          console.warn('[bg] 이미지 로드 실패:', d.url);
+          resolve();
+        };
+
+        img.src=d.url;
+      })
+      .catch(e=>{
+        clearTimeout(timeout);
+        console.warn('[bg] 요청 실패:', e.message);
+        resolve();
+      });
+  });
 }
 
 /* ═══ MODE SWITCH ═══ */
@@ -678,12 +707,16 @@ async function genCards(){
     const d=await r.json();
     if(!r.ok){showErr('ce',d.error||'카드뉴스 생성 실패');document.getElementById('cp-ph').innerHTML='<div class="ico">🖼</div><h2>카드뉴스 생성기</h2><p>원고를 입력하면 6장의 SNS 카드뉴스 이미지를 자동으로 생성합니다.</p>';return;}
     cardData=d;
-    renderCards(d);
     setTb(d.cards?.[0]?.title||'카드뉴스 생성 완료',`${((d.tokensIn||0)+(d.tokensOut||0)).toLocaleString()} tokens`);
-    show('cpzB',true);
-    // 자동 배경 이미지 (비동기, 실패해도 무관)
+
+    // 자동 배경 이미지 로드 대기 (최대 3초)
     const bgQ=d.cards?.[0]?.title||d.cards?.[0]?.headline||'';
-    if(bgQ) autoFetchBg(bgQ);
+    console.log('[genCards] 배경 이미지 자동 fetch 시작:', bgQ);
+    await autoFetchBg(bgQ);
+    console.log('[genCards] 배경 이미지 로드 완료, 카드 렌더링');
+
+    renderCards(d);
+    show('cpzB',true);
   }catch(e){showErr('ce','서버 연결 실패: '+e.message);}
   finally{setBusy('cg','ci','ct2',false,'','🖼','카드뉴스 생성');}
 }
