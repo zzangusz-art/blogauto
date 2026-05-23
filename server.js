@@ -250,6 +250,53 @@ app.post('/api/generate/bulk', bulkLimiter, async (req, res) => {
   res.end();
 });
 
+// ── 카드뉴스 콘텐츠 추출 ────────────────────────────────
+app.post('/api/cardnews', apiLimiter, async (req, res) => {
+  const { article } = req.body;
+  if (!article?.trim()) return res.status(400).json({ error: '원고를 입력해주세요.' });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' });
+
+  try {
+    const message = await anthropic.messages.create({
+      model:      process.env.MODEL || 'claude-sonnet-4-6',
+      max_tokens: 2048,
+      system: `당신은 SNS 카드뉴스 전문 에디터입니다.
+주어진 원고를 분석해 6장의 카드뉴스 콘텐츠를 JSON으로만 반환합니다.
+JSON 이외의 텍스트(설명, 마크다운 코드블록 포함)는 절대 출력하지 마세요.`,
+      messages: [{
+        role: 'user',
+        content: `다음 원고로 인스타그램/SNS 카드뉴스 6장을 만들어주세요.
+
+원고:
+${article.trim()}
+
+반드시 아래 JSON 형식으로만 응답하세요:
+{
+  "cards": [
+    {"type":"title","title":"메인 제목(20자 이내)","subtitle":"부제목(35자 이내)","emoji":"이모지1개"},
+    {"type":"content","num":1,"headline":"포인트 제목(15자 이내)","body":"핵심 내용(55자 이내)","emoji":"이모지1개"},
+    {"type":"content","num":2,"headline":"포인트 제목(15자 이내)","body":"핵심 내용(55자 이내)","emoji":"이모지1개"},
+    {"type":"content","num":3,"headline":"포인트 제목(15자 이내)","body":"핵심 내용(55자 이내)","emoji":"이모지1개"},
+    {"type":"content","num":4,"headline":"포인트 제목(15자 이내)","body":"핵심 내용(55자 이내)","emoji":"이모지1개"},
+    {"type":"cta","headline":"마무리 메시지(20자 이내)","body":"행동 유도 문구(40자 이내)","emoji":"이모지1개"}
+  ]
+}`
+      }]
+    });
+
+    const raw   = message.content[0].text.trim();
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return res.status(500).json({ error: '카드 데이터 파싱 실패. 다시 시도해주세요.' });
+
+    const data = JSON.parse(match[0]);
+    res.json({ ...data, tokensIn: message.usage.input_tokens, tokensOut: message.usage.output_tokens });
+  } catch (err) {
+    console.error('[cardnews]', err.message);
+    if (err.status === 401) return res.status(401).json({ error: 'API 키가 유효하지 않습니다.' });
+    res.status(500).json({ error: `카드뉴스 생성 실패: ${err.message}` });
+  }
+});
+
 // ── Health check ────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: Date.now() }));
 
