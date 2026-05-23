@@ -6,6 +6,9 @@
   <title>블로그 자동화 시스템</title>
   <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&family=Nanum+Myeongjo:wght@400;700&family=Gothic+A1:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg:#0d0f1a; --sf:#151726; --sf2:#1e2136; --sf3:#252840;
@@ -208,9 +211,14 @@
            width:640px;max-width:92vw;max-height:78vh;display:flex;flex-direction:column;overflow:hidden;
            transform:translateY(6px);transition:transform .2s}
     .ov.show .modal{transform:translateY(0)}
-    .mhd{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
-    .mhd h2{font-size:15px;font-weight:600;flex:1}
-    .mcls{background:none;border:none;color:var(--txm);cursor:pointer;font-size:18px;line-height:1;padding:3px}
+    .mhd{padding:14px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px}
+    .mhd h2{font-size:15px;font-weight:600}
+    .htabs{display:flex;gap:4px;flex:1;margin-left:8px}
+    .htab{background:var(--sf2);border:1px solid var(--bd);color:var(--txm);padding:4px 12px;
+          border-radius:var(--rs);cursor:pointer;font-size:12px;transition:.2s}
+    .htab.on{background:var(--acd);border-color:var(--ac);color:var(--acl)}
+    .htab:hover:not(.on){color:var(--txd);border-color:var(--ac)}
+    .mcls{background:none;border:none;color:var(--txm);cursor:pointer;font-size:18px;line-height:1;padding:3px;flex-shrink:0}
     .mcls:hover{color:var(--tx)}
     .mbod{padding:12px 20px;overflow-y:auto;flex:1}
     .hi{padding:11px 13px;border:1px solid var(--bd);border-radius:var(--rs);margin-bottom:7px;
@@ -222,6 +230,9 @@
     .dbtn{background:none;border:none;color:var(--txm);cursor:pointer;font-size:13px;padding:3px;border-radius:4px;transition:.2s}
     .dbtn:hover{color:var(--er);background:rgba(239,68,68,.12)}
     .emp{text-align:center;color:var(--txm);padding:32px;font-size:13px}
+    /* Card history thumb */
+    .chi-thumb{display:flex;gap:3px;margin-top:5px}
+    .chi-dot{width:7px;height:7px;border-radius:2px;background:var(--ac);opacity:.5}
 
     ::-webkit-scrollbar{width:5px}
     ::-webkit-scrollbar-track{background:transparent}
@@ -327,27 +338,29 @@
         </div>
       </div>
       <div class="fld">
-        <label>테마 색상 (직접 지정)</label>
-        <div class="r2">
-          <div class="fld">
-            <label style="font-size:11px;color:var(--txm)">그라디언트 시작</label>
-            <input type="color" id="cc1" value="#312e81" oninput="onClrChange()">
-          </div>
-          <div class="fld">
-            <label style="font-size:11px;color:var(--txm)">그라디언트 끝</label>
-            <input type="color" id="cc2" value="#6366f1" oninput="onClrChange()">
-          </div>
-        </div>
-        <div style="font-size:11px;color:var(--txm);margin-top:2px">빠른 선택</div>
+        <label>테마 색상</label>
+        <input type="color" id="cc1" value="#4f46e5" oninput="onClrChange()">
+        <div style="font-size:11px;color:var(--txm);margin-top:4px">빠른 선택</div>
         <div class="tpicker">
-          <button class="tbtn on" style="background:linear-gradient(135deg,#312e81,#6366f1)" title="인디고"   onclick="setPreset(this,'#312e81','#6366f1')"></button>
-          <button class="tbtn"    style="background:linear-gradient(135deg,#9a3412,#f97316)" title="코랄"     onclick="setPreset(this,'#9a3412','#f97316')"></button>
-          <button class="tbtn"    style="background:linear-gradient(135deg,#064e3b,#10b981)" title="에메랄드" onclick="setPreset(this,'#064e3b','#10b981')"></button>
-          <button class="tbtn"    style="background:linear-gradient(135deg,#881337,#f43f5e)" title="로즈"     onclick="setPreset(this,'#881337','#f43f5e')"></button>
-          <button class="tbtn"    style="background:linear-gradient(135deg,#0f172a,#475569)" title="슬레이트" onclick="setPreset(this,'#0f172a','#475569')"></button>
-          <button class="tbtn"    style="background:linear-gradient(135deg,#854d0e,#ca8a04)" title="골드"     onclick="setPreset(this,'#854d0e','#ca8a04')"></button>
-          <button class="tbtn"    style="background:linear-gradient(135deg,#1e3a5f,#3b82f6)" title="블루"     onclick="setPreset(this,'#1e3a5f','#3b82f6')"></button>
+          <button class="tbtn on" style="background:#4f46e5" title="인디고"   onclick="setPreset(this,'#4f46e5')"></button>
+          <button class="tbtn"    style="background:#ea580c" title="코랄"     onclick="setPreset(this,'#ea580c')"></button>
+          <button class="tbtn"    style="background:#059669" title="에메랄드" onclick="setPreset(this,'#059669')"></button>
+          <button class="tbtn"    style="background:#e11d48" title="로즈"     onclick="setPreset(this,'#e11d48')"></button>
+          <button class="tbtn"    style="background:#475569" title="슬레이트" onclick="setPreset(this,'#475569')"></button>
+          <button class="tbtn"    style="background:#b45309" title="골드"     onclick="setPreset(this,'#b45309')"></button>
+          <button class="tbtn"    style="background:#2563eb" title="블루"     onclick="setPreset(this,'#2563eb')"></button>
+          <button class="tbtn"    style="background:#7c3aed" title="보라"     onclick="setPreset(this,'#7c3aed')"></button>
         </div>
+      </div>
+      <div class="fld">
+        <label>글꼴</label>
+        <select id="cfnt" onchange="onFontChange()">
+          <option value="malgun">맑은 고딕 (기본)</option>
+          <option value="nanum-gothic">나눔고딕</option>
+          <option value="nanum-myeongjo">나눔명조</option>
+          <option value="gothic-a1">Gothic A1</option>
+          <option value="noto-sans-kr">Noto Sans KR</option>
+        </select>
       </div>
       <button class="pbtn" id="cg" onclick="genCards()">
         <span id="ci">🖼</span><span id="ct2">카드뉴스 생성</span>
@@ -403,7 +416,14 @@
 <!-- History modal -->
 <div class="ov" id="hov" onclick="hbdClose(event)">
   <div class="modal">
-    <div class="mhd"><h2>📋 생성 이력</h2><button class="mcls" onclick="closeHist()">✕</button></div>
+    <div class="mhd">
+      <h2>📋 이력</h2>
+      <div class="htabs">
+        <button class="htab on" id="ht0" onclick="switchHistTab('blog')">✍️ 블로그</button>
+        <button class="htab"    id="ht1" onclick="switchHistTab('card')">🖼 카드뉴스</button>
+      </div>
+      <button class="mcls" onclick="closeHist()">✕</button>
+    </div>
     <div class="mbod" id="mbod"><div class="emp">불러오는 중...</div></div>
   </div>
 </div>
@@ -412,13 +432,12 @@
 marked.setOptions({breaks:true,gfm:true});
 
 /* ═══ STATE ═══ */
-let mode='single', curPost=null, bulkRes=[], bulkRun=false, cardData=null, cardBgImage=null;
+let mode='single', curPost=null, bulkRes=[], bulkRun=false, cardData=null, cardBgImage=null, histTab='blog';
 
-/* ── 테마 색상 헬퍼 ── */
+/* ── 테마 색상 헬퍼 (단일 색상 기반) ── */
 function getTheme(){
-  const g1=document.getElementById('cc1').value;
-  const g2=document.getElementById('cc2').value;
-  return { g1, g2, lb: lighten(g2,0.92), lt: darken(g1,0.25) };
+  const c1=document.getElementById('cc1').value;
+  return { g1: darken(c1,0.72), g2: c1, lb: lighten(c1,0.92), lt: darken(c1,0.22) };
 }
 function lighten(hex,a){
   const[r,g,b]=parseHex(hex);
@@ -429,9 +448,8 @@ function darken(hex,a){
   return `rgb(${Math.round(r*a)},${Math.round(g*a)},${Math.round(b*a)})`;
 }
 function parseHex(hex){return[parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)];}
-function setPreset(btn,g1,g2){
-  document.getElementById('cc1').value=g1;
-  document.getElementById('cc2').value=g2;
+function setPreset(btn,c1){
+  document.getElementById('cc1').value=c1;
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.toggle('on',b===btn));
   if(cardData) renderCards(cardData);
 }
@@ -439,6 +457,19 @@ function onClrChange(){
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
   if(cardData) renderCards(cardData);
 }
+
+/* ── 글꼴 헬퍼 ── */
+const FONT_MAP={
+  'malgun':       '"Malgun Gothic","Apple SD Gothic Neo",sans-serif',
+  'nanum-gothic': '"Nanum Gothic",sans-serif',
+  'nanum-myeongjo':'"Nanum Myeongjo",serif',
+  'gothic-a1':    '"Gothic A1",sans-serif',
+  'noto-sans-kr': '"Noto Sans KR",sans-serif',
+};
+function getFontFamily(){
+  return FONT_MAP[document.getElementById('cfnt')?.value||'malgun']||FONT_MAP.malgun;
+}
+function onFontChange(){if(cardData) renderCards(cardData);}
 
 /* ── 배경 이미지 ── */
 function loadBgImg(e){
@@ -464,6 +495,24 @@ function clearBgImg(){
   document.getElementById('iprev').style.display='none';
   document.getElementById('iuplbl').textContent='이미지 파일 선택 (jpg · png · webp)';
   if(cardData) renderCards(cardData);
+}
+async function autoFetchBg(q){
+  try{
+    const r=await fetch(`/api/unsplash?q=${encodeURIComponent(q)}`);
+    const d=await r.json();
+    if(!d.url) return;
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>{
+      cardBgImage=img;
+      document.getElementById('ithumb').style.backgroundImage=`url(${d.url})`;
+      document.getElementById('iname').textContent='AI 자동 배경';
+      document.getElementById('iprev').style.display='flex';
+      document.getElementById('iuplbl').textContent='이미지 변경';
+      if(cardData) renderCards(cardData);
+    };
+    img.src=d.url;
+  }catch(e){console.warn('[bg]',e.message);}
 }
 
 /* ═══ MODE SWITCH ═══ */
@@ -630,8 +679,11 @@ async function genCards(){
     if(!r.ok){showErr('ce',d.error||'카드뉴스 생성 실패');document.getElementById('cp-ph').innerHTML='<div class="ico">🖼</div><h2>카드뉴스 생성기</h2><p>원고를 입력하면 6장의 SNS 카드뉴스 이미지를 자동으로 생성합니다.</p>';return;}
     cardData=d;
     renderCards(d);
-    setTb('카드뉴스 생성 완료',`${((d.tokensIn||0)+(d.tokensOut||0)).toLocaleString()} tokens`);
+    setTb(d.cards?.[0]?.title||'카드뉴스 생성 완료',`${((d.tokensIn||0)+(d.tokensOut||0)).toLocaleString()} tokens`);
     show('cpzB',true);
+    // 자동 배경 이미지 (비동기, 실패해도 무관)
+    const bgQ=d.cards?.[0]?.title||d.cards?.[0]?.headline||'';
+    if(bgQ) autoFetchBg(bgQ);
   }catch(e){showErr('ce','서버 연결 실패: '+e.message);}
   finally{setBusy('cg','ci','ct2',false,'','🖼','카드뉴스 생성');}
 }
@@ -656,7 +708,6 @@ function renderCards(data){
 }
 
 /* ── Canvas drawing (600×600 output, 1080-unit coordinate space) ── */
-const FN='"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif';
 function drawCard(idx,card,brand){
   const cv=document.getElementById('cc'+idx);
   if(!cv)return;
@@ -666,6 +717,7 @@ function drawCard(idx,card,brand){
   c.scale(CW/1080,CW/1080);
   const W=1080,H=1080;
   const t=getTheme();
+  const F=getFontFamily();
   const grad=(x1,y1,x2,y2)=>{const g=c.createLinearGradient(x1,y1,x2,y2);g.addColorStop(0,t.g1);g.addColorStop(1,t.g2);return g;};
   const wrap=(txt,x,y,mw,lh)=>{
     if(!txt)return y;
@@ -700,24 +752,24 @@ function drawCard(idx,card,brand){
     c.globalAlpha=1;
     // Card number
     const num=card.type==='title'?'01':'06';
-    c.fillStyle='rgba(255,255,255,0.35)'; c.font=`bold 32px ${FN}`; c.textAlign='right'; c.fillText(num,W-60,80);
+    c.fillStyle='rgba(255,255,255,0.35)'; c.font=`bold 32px ${F}`; c.textAlign='right'; c.fillText(num,W-60,80);
     // Emoji
     c.font=`130px serif`; c.textAlign='center'; c.fillText(card.emoji||'✨',W/2,card.type==='title'?390:370);
     // Title
-    c.fillStyle='#fff'; c.font=`bold 70px ${FN}`; c.textAlign='center';
+    c.fillStyle='#fff'; c.font=`bold 70px ${F}`; c.textAlign='center';
     const ty=wrap(card.title||card.headline,W/2,card.type==='title'?530:510,W-120,84);
     // Subtitle/body
-    c.fillStyle='rgba(255,255,255,0.8)'; c.font=`38px ${FN}`;
+    c.fillStyle='rgba(255,255,255,0.8)'; c.font=`38px ${F}`;
     wrap(card.subtitle||card.body,W/2,ty+12,W-160,50);
     // Brand
-    if(brand){c.fillStyle='rgba(255,255,255,0.4)'; c.font=`27px ${FN}`; c.textAlign='center'; c.fillText(brand,W/2,H-54);}
+    if(brand){c.fillStyle='rgba(255,255,255,0.4)'; c.font=`27px ${F}`; c.textAlign='center'; c.fillText(brand,W/2,H-54);}
   }else{
     // Top bar
     c.fillStyle=grad(0,0,W,0); c.fillRect(0,0,W,14);
     // Ghost number
-    c.fillStyle=t.g2; c.globalAlpha=0.06; c.font=`bold 280px ${FN}`; c.textAlign='right'; c.fillText(`0${card.num}`,W-10,290); c.globalAlpha=1;
+    c.fillStyle=t.g2; c.globalAlpha=0.06; c.font=`bold 280px ${F}`; c.textAlign='right'; c.fillText(`0${card.num}`,W-10,290); c.globalAlpha=1;
     // Number badge
-    const ns=`0${card.num}`; c.font=`bold 28px ${FN}`; c.textAlign='left';
+    const ns=`0${card.num}`; c.font=`bold 28px ${F}`; c.textAlign='left';
     const bw=c.measureText(ns).width+34,bx=56,by=52,bh=48,br=9;
     c.fillStyle=t.g2;
     c.beginPath();
@@ -729,16 +781,16 @@ function drawCard(idx,card,brand){
     // Emoji
     c.font=`110px serif`; c.textAlign='center'; c.fillText(card.emoji||'💡',W/2,430);
     // Headline
-    c.fillStyle=t.lt; c.font=`bold 60px ${FN}`; c.textAlign='center';
+    c.fillStyle=t.lt; c.font=`bold 60px ${F}`; c.textAlign='center';
     const hy=wrap(card.headline,W/2,575,W-120,74);
     // Divider
     c.fillStyle=t.g2; c.fillRect(W/2-35,hy+10,70,5);
     // Body
-    c.fillStyle=t.lt; c.globalAlpha=0.68; c.font=`36px ${FN}`;
+    c.fillStyle=t.lt; c.globalAlpha=0.68; c.font=`36px ${F}`;
     wrap(card.body,W/2,hy+42,W-160,48);
     c.globalAlpha=1;
     // Brand
-    if(brand){c.fillStyle=t.lt;c.globalAlpha=0.22;c.font=`25px ${FN}`;c.textAlign='center';c.fillText(brand,W/2,H-54);c.globalAlpha=1;}
+    if(brand){c.fillStyle=t.lt;c.globalAlpha=0.22;c.font=`25px ${F}`;c.textAlign='center';c.fillText(brand,W/2,H-54);c.globalAlpha=1;}
   }
 }
 
@@ -757,14 +809,32 @@ async function dlCardZip(){
 }
 
 /* ═══ HISTORY ═══ */
-async function openHist(){document.getElementById('hov').classList.add('show');await loadHist();}
+async function openHist(){
+  // 현재 탭을 모드에 맞게 자동 선택
+  histTab=mode==='card'?'card':'blog';
+  document.getElementById('ht0').classList.toggle('on',histTab==='blog');
+  document.getElementById('ht1').classList.toggle('on',histTab==='card');
+  document.getElementById('hov').classList.add('show');
+  await refreshHist();
+}
 function closeHist(){document.getElementById('hov').classList.remove('show');}
 function hbdClose(e){if(e.target.id==='hov')closeHist();}
+async function switchHistTab(tab){
+  histTab=tab;
+  document.getElementById('ht0').classList.toggle('on',tab==='blog');
+  document.getElementById('ht1').classList.toggle('on',tab==='card');
+  await refreshHist();
+}
+async function refreshHist(){
+  if(histTab==='blog') await loadHist(); else await loadCardHist();
+}
+
+/* 블로그 이력 */
 async function loadHist(){
   const b=document.getElementById('mbod');b.innerHTML='<div class="emp">불러오는 중…</div>';
   try{
     const ps=await(await fetch('/api/posts')).json();
-    if(!ps.length){b.innerHTML='<div class="emp">아직 생성된 글이 없습니다.</div>';return;}
+    if(!ps.length){b.innerHTML='<div class="emp">아직 생성된 블로그 글이 없습니다.</div>';return;}
     b.innerHTML=ps.map(p=>`
       <div class="hi" onclick="loadPost(${p.id})">
         <div class="hin">
@@ -783,6 +853,38 @@ async function loadPost(id){
 async function delPost(e,id){
   e.stopPropagation();if(!confirm('이 글을 삭제할까요?'))return;
   await fetch('/api/posts/'+id,{method:'DELETE'});await loadHist();
+}
+
+/* 카드뉴스 이력 */
+async function loadCardHist(){
+  const b=document.getElementById('mbod');b.innerHTML='<div class="emp">불러오는 중…</div>';
+  try{
+    const ps=await(await fetch('/api/cardnews')).json();
+    if(!ps.length){b.innerHTML='<div class="emp">아직 생성된 카드뉴스가 없습니다.</div>';return;}
+    b.innerHTML=ps.map(p=>`
+      <div class="hi" onclick="loadCardPost(${p.id})">
+        <div class="hin">
+          <div class="hit">🖼 ${esc(p.title||'카드뉴스')}</div>
+          <div class="him"><span>${fmtD(p.created_at)}</span><span>${(p.tokens_in||0)+(p.tokens_out||0)} tokens</span></div>
+          <div class="chi-thumb">${Array(6).fill('<div class="chi-dot"></div>').join('')}</div>
+        </div>
+        <button class="dbtn" onclick="delCardPost(event,${p.id})" title="삭제">🗑</button>
+      </div>`).join('');
+  }catch{b.innerHTML='<div class="emp">이력 불러오기 실패</div>';}
+}
+async function loadCardPost(id){
+  closeHist(); setMode('card');
+  try{
+    const p=await(await fetch('/api/cardnews/'+id)).json();
+    cardData={cards:p.cards,tokensIn:p.tokens_in,tokensOut:p.tokens_out};
+    renderCards(cardData);
+    setTb(p.title||'카드뉴스',`${((p.tokens_in||0)+(p.tokens_out||0)).toLocaleString()} tokens`);
+    show('cpzB',true);
+  }catch{showErr('ce','카드뉴스를 불러오지 못했습니다.');}
+}
+async function delCardPost(e,id){
+  e.stopPropagation();if(!confirm('이 카드뉴스를 삭제할까요?'))return;
+  await fetch('/api/cardnews/'+id,{method:'DELETE'});await loadCardHist();
 }
 
 /* ═══ UTILS ═══ */

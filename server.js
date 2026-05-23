@@ -29,6 +29,17 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cardnews_posts (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    title      TEXT,
+    cards_json TEXT NOT NULL,
+    tokens_in  INTEGER DEFAULT 0,
+    tokens_out INTEGER DEFAULT 0,
+    created_at INTEGER DEFAULT (strftime('%s','now'))
+  )
+`);
+
 // ── Anthropic ────────────────────────────────────────────
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -161,6 +172,47 @@ app.delete('/api/posts/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// ── 카드뉴스 이력 ───────────────────────────────────────
+app.get('/api/cardnews', (req, res) => {
+  const posts = db.prepare(
+    'SELECT id, title, tokens_in, tokens_out, created_at FROM cardnews_posts ORDER BY created_at DESC LIMIT 100'
+  ).all();
+  res.json(posts);
+});
+
+app.get('/api/cardnews/:id', (req, res) => {
+  const post = db.prepare('SELECT * FROM cardnews_posts WHERE id = ?').get(req.params.id);
+  if (!post) return res.status(404).json({ error: '카드뉴스를 찾을 수 없습니다.' });
+  try { post.cards = JSON.parse(post.cards_json); } catch {}
+  res.json(post);
+});
+
+app.delete('/api/cardnews/:id', (req, res) => {
+  const info = db.prepare('DELETE FROM cardnews_posts WHERE id = ?').run(req.params.id);
+  if (info.changes === 0) return res.status(404).json({ error: '카드뉴스를 찾을 수 없습니다.' });
+  res.json({ success: true });
+});
+
+// ── Unsplash 이미지 검색 프록시 ─────────────────────────
+app.get('/api/unsplash', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.status(400).json({ error: '검색어가 필요합니다.' });
+  const key = process.env.UNSPLASH_ACCESS_KEY;
+  if (!key) return res.json({ url: null });
+  try {
+    const r = await fetch(
+      `https://api.unsplash.com/photos/random?query=${encodeURIComponent(q)}&orientation=squarish&client_id=${key}`,
+      { headers: { 'Accept-Version': 'v1' } }
+    );
+    if (!r.ok) return res.json({ url: null });
+    const d = await r.json();
+    res.json({ url: d.urls?.regular || d.urls?.small || null });
+  } catch (e) {
+    console.error('[unsplash]', e.message);
+    res.json({ url: null });
+  }
+});
+
 // ── 다량 생성 (SSE 스트리밍) ─────────────────────────────
 const bulkLimiter = rateLimit({
   windowMs: 5 * 60_000,
@@ -289,7 +341,11 @@ ${article.trim()}
     if (!match) return res.status(500).json({ error: '카드 데이터 파싱 실패. 다시 시도해주세요.' });
 
     const data = JSON.parse(match[0]);
-    res.json({ ...data, tokensIn: message.usage.input_tokens, tokensOut: message.usage.output_tokens });
+    const cTitle = data.cards?.[0]?.title || data.cards?.[0]?.headline || '카드뉴스';
+    const crow = db.prepare(
+      'INSERT INTO cardnews_posts (title, cards_json, tokens_in, tokens_out) VALUES (?, ?, ?, ?)'
+    ).run(cTitle, JSON.stringify(data.cards), message.usage.input_tokens, message.usage.output_tokens);
+    res.json({ id: crow.lastInsertRowid, ...data, tokensIn: message.usage.input_tokens, tokensOut: message.usage.output_tokens });
   } catch (err) {
     console.error('[cardnews]', err.message);
     if (err.status === 401) return res.status(401).json({ error: 'API 키가 유효하지 않습니다.' });
