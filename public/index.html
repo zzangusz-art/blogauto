@@ -722,9 +722,24 @@ async function genCards(){
 }
 
 function renderCards(data){
+  console.log('[renderCards] 호출됨, 카드 수:', data?.cards?.length);
+
+  if(!data || !data.cards || !Array.isArray(data.cards)){
+    console.error('[renderCards] 데이터 오류:', data);
+    return;
+  }
+
   const brand=document.getElementById('cbr').value.trim();
   const grid=document.getElementById('cgrid');
-  document.getElementById('cp-ph').style.display='none';
+
+  if(!grid){
+    console.error('[renderCards] #cgrid 요소를 찾을 수 없음');
+    return;
+  }
+
+  const ph=document.getElementById('cp-ph');
+  if(ph) ph.style.display='none';
+
   grid.style.display='grid';
   grid.innerHTML=data.cards.map((_,i)=>`
     <div class="cwrap">
@@ -734,20 +749,27 @@ function renderCards(data){
         <button class="covbtn" onclick="dlCard(${i})">⬇ PNG</button>
       </div>
     </div>`).join('');
+
+  console.log('[renderCards] DOM 업데이트 완료, 캔버스 렌더링 시작');
+
   // Draw after DOM update
   requestAnimationFrame(()=>{
+    console.log('[renderCards] requestAnimationFrame 콜백 실행');
     data.cards.forEach((card,i)=>{
       try{
+        console.log(`[renderCards] drawCard(${i}) 호출`);
         drawCard(i,card,brand);
       }catch(e){
-        console.error(`[drawCard] 카드 ${i+1} 렌더링 실패:`, e.message);
+        console.error(`[drawCard] 카드 ${i+1} 렌더링 실패:`, e.message, e);
         const cv=document.getElementById('cc'+i);
         if(cv){
           cv.width=600; cv.height=600;
           const c=cv.getContext('2d');
-          c.fillStyle='#ef4444'; c.fillRect(0,0,600,600);
-          c.fillStyle='#fff'; c.font='bold 20px sans-serif';
-          c.textAlign='center'; c.fillText('렌더링 오류', 300, 300);
+          if(c){
+            c.fillStyle='#ef4444'; c.fillRect(0,0,600,600);
+            c.fillStyle='#fff'; c.font='bold 20px sans-serif';
+            c.textAlign='center'; c.fillText('오류', 300, 300);
+          }
         }
       }
     });
@@ -756,16 +778,29 @@ function renderCards(data){
 
 /* ── Canvas drawing (600×600 output, 1080-unit coordinate space) ── */
 function drawCard(idx,card,brand){
+  console.log(`[drawCard] 카드 ${idx+1} 시작:`, {type: card?.type, title: card?.title});
+
   const cv=document.getElementById('cc'+idx);
   if(!cv) throw new Error(`Canvas cc${idx} not found`);
+
   const CW=600;
   cv.width=CW; cv.height=CW;
   const c=cv.getContext('2d');
   if(!c) throw new Error('Canvas context 2d not available');
+
+  console.log(`[drawCard] 카드 ${idx+1} - Canvas 획득 성공`);
+
   c.scale(CW/1080,CW/1080);
   const W=1080,H=1080;
+
+  console.log(`[drawCard] 카드 ${idx+1} - getTheme 호출`);
   const t=getTheme();
+  console.log(`[drawCard] 카드 ${idx+1} - 테마:`, t);
+
+  console.log(`[drawCard] 카드 ${idx+1} - getFontFamily 호출`);
   const F=getFontFamily();
+  console.log(`[drawCard] 카드 ${idx+1} - 글꼴:`, F);
+
   if(!F) throw new Error('Font family not available');
   const grad=(x1,y1,x2,y2)=>{const g=c.createLinearGradient(x1,y1,x2,y2);g.addColorStop(0,t.g1);g.addColorStop(1,t.g2);return g;};
   const wrap=(txt,x,y,mw,lh)=>{if(!txt)return y;const chars=[...String(txt)];let line='',cy=y;for(const ch of chars){const test=line+ch;if(c.measureText(test).width>mw&&line){c.fillText(line,x,cy);line=ch;cy+=lh;}else line=test;}if(line){c.fillText(line,x,cy);cy+=lh;}return cy;};
