@@ -747,16 +747,19 @@ function drawCard(idx,card,brand){
   c.scale(CW/1080,CW/1080);
   const W=1080,H=1080,t=getTheme(),F=getFontFamily();
 
-  /* text wrap — uses current textAlign & fillStyle */
+  /* text wrap — \n 명시 줄바꿈 지원, 현재 textAlign & fillStyle 사용 */
   const wrap=(txt,x,y,mw,lh)=>{
     if(!txt)return y;
-    const chars=[...String(txt)]; let line='',cy=y;
-    for(const ch of chars){
-      const test=line+ch;
-      if(c.measureText(test).width>mw&&line){c.fillText(line,x,cy);line=ch;cy+=lh;}
-      else line=test;
+    let cy=y;
+    for(const seg of String(txt).split('\n')){
+      const chars=[...seg]; let line='';
+      for(const ch of chars){
+        const test=line+ch;
+        if(c.measureText(test).width>mw&&line){c.fillText(line,x,cy);line=ch;cy+=lh;}
+        else line=test;
+      }
+      if(line){c.fillText(line,x,cy);cy+=lh;}
     }
-    if(line){c.fillText(line,x,cy);cy+=lh;}
     return cy;
   };
 
@@ -786,7 +789,7 @@ function drawCard(idx,card,brand){
     const bg=c.createLinearGradient(0,0,W,H);
     bg.addColorStop(0,t.g1);bg.addColorStop(1,t.g2);
     c.fillStyle=bg;c.fillRect(0,0,W,H);
-    drawImg(0.25);
+    drawImg(0.32);
     // 텍스트 가독성 오버레이
     const ov=c.createLinearGradient(0,0,0,H);
     ov.addColorStop(0,'rgba(0,0,0,0.55)');ov.addColorStop(0.38,'rgba(0,0,0,0.05)');
@@ -815,8 +818,16 @@ function drawCard(idx,card,brand){
   else if(card.type==='content'){
     // 밝은 배경
     c.fillStyle=t.lb;c.fillRect(0,0,W,H);
-    drawImg(0.22);
-    c.fillStyle='rgba(255,255,255,0.52)';c.fillRect(0,0,W,H);
+
+    // 항상 보이는 도트 텍스처 (이미지 없을 때도 질감 제공)
+    c.fillStyle=t.g2;c.globalAlpha=0.045;
+    for(let tx=30;tx<W;tx+=66)for(let ty=30;ty<H;ty+=66){
+      c.beginPath();c.arc(tx,ty,3,0,Math.PI*2);c.fill();
+    }
+    c.globalAlpha=1;
+
+    // 배경 이미지 (흰 오버레이 제거 → 이미지가 실제로 보임)
+    drawImg(0.32);
 
     // 워터마크 숫자
     c.fillStyle=t.g2;c.globalAlpha=0.055;
@@ -878,7 +889,7 @@ function drawCard(idx,card,brand){
     const bg=c.createLinearGradient(0,0,W,H);
     bg.addColorStop(0,t.g1);bg.addColorStop(1,t.g2);
     c.fillStyle=bg;c.fillRect(0,0,W,H);
-    drawImg(0.12);
+    drawImg(0.18);
     // 데코 서클
     c.globalAlpha=0.1;c.fillStyle='#fff';
     [[W*0.92,H*0.06,210],[W*0.04,H*0.92,160],[W*0.5,H*1.06,340]].forEach(([cx,cy,r])=>{
