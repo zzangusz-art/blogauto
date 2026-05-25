@@ -722,20 +722,11 @@ async function genCards(){
 }
 
 function renderCards(data){
-  console.log('[renderCards] 호출됨, 카드 수:', data?.cards?.length);
-
-  if(!data || !data.cards || !Array.isArray(data.cards)){
-    console.error('[renderCards] 데이터 오류:', data);
-    return;
-  }
+  if(!data || !data.cards || !Array.isArray(data.cards)) return;
 
   const brand=document.getElementById('cbr').value.trim();
   const grid=document.getElementById('cgrid');
-
-  if(!grid){
-    console.error('[renderCards] #cgrid 요소를 찾을 수 없음');
-    return;
-  }
+  if(!grid) return;
 
   const ph=document.getElementById('cp-ph');
   if(ph) ph.style.display='none';
@@ -743,25 +734,21 @@ function renderCards(data){
   grid.style.display='grid';
   grid.innerHTML=data.cards.map((_,i)=>`
     <div class="cwrap">
-      <canvas class="ccanvas" id="cc${i}"></canvas>
+      <canvas class="ccanvas" id="cnv${i}"></canvas>
       <div class="cnum">${String(i+1).padStart(2,'0')}</div>
       <div class="cov">
         <button class="covbtn" onclick="dlCard(${i})">⬇ PNG</button>
       </div>
     </div>`).join('');
 
-  console.log('[renderCards] DOM 업데이트 완료, 캔버스 렌더링 시작');
-
   // Draw after DOM update
   requestAnimationFrame(()=>{
-    console.log('[renderCards] requestAnimationFrame 콜백 실행');
     data.cards.forEach((card,i)=>{
       try{
-        console.log(`[renderCards] drawCard(${i}) 호출`);
         drawCard(i,card,brand);
       }catch(e){
         console.error(`[drawCard] 카드 ${i+1} 렌더링 실패:`, e.message, e);
-        const cv=document.getElementById('cc'+i);
+        const cv=document.getElementById('cnv'+i);
         if(cv){
           cv.width=600; cv.height=600;
           const c=cv.getContext('2d');
@@ -778,18 +765,13 @@ function renderCards(data){
 
 /* ── Canvas drawing (600×600 output, 1080-unit coordinate space) ── */
 function drawCard(idx,card,brand){
-  console.log(`[drawCard] 카드 ${idx+1} 시작`);
-  const cvId='cc'+idx;
-  console.log(`[drawCard] Canvas ID 찾기: ${cvId}`);
+  const cvId='cnv'+idx;
   const cv=document.getElementById(cvId);
-  console.log(`[drawCard] Canvas 요소:`, cv, `타입:`, cv?.tagName, `클래스:`, cv?.className);
   if(!cv) throw new Error(`Canvas ${cvId} not found`);
   if(cv.tagName !== 'CANVAS') throw new Error(`요소 ${cvId}는 CANVAS가 아니라 ${cv.tagName}`);
   const CW=600;
   cv.width=CW; cv.height=CW;
-  console.log(`[drawCard] Canvas 크기 설정: ${CW}×${CW}`);
   const c=cv.getContext('2d');
-  console.log(`[drawCard] 2D Context:`, c?.constructor?.name);
   if(!c) throw new Error('Canvas context 2d not available');
   c.scale(CW/1080,CW/1080);
   const W=1080, H=1080;
@@ -867,18 +849,17 @@ function drawCard(idx,card,brand){
     c.globalAlpha=1;
     if(brand){ c.fillStyle=t.lt; c.globalAlpha=0.22; c.font=`25px ${F}`; c.textAlign='center'; c.fillText(brand,W/2,H-54); c.globalAlpha=1; }
   }
-  console.log(`[drawCard] 카드 ${idx+1} 완료`);
 }
 
 async function dlCard(i){
-  const cv=document.getElementById('cc'+i);if(!cv)return;
+  const cv=document.getElementById('cnv'+i);if(!cv)return;
   cv.toBlob(b=>dl(b,`card-${String(i+1).padStart(2,'0')}.png`,'image/png'),'image/png');
 }
 async function dlCardZip(){
   if(!cardData)return;
   const zip=new JSZip();
   await Promise.all(cardData.cards.map((_,i)=>new Promise(resolve=>{
-    const cv=document.getElementById('cc'+i);if(!cv){resolve();return;}
+    const cv=document.getElementById('cnv'+i);if(!cv){resolve();return;}
     cv.toBlob(b=>{zip.file(`card-${String(i+1).padStart(2,'0')}.png`,b);resolve();},'image/png');
   })));
   dl(await zip.generateAsync({type:'blob'}),'cardnews-'+today()+'.zip','application/zip');
