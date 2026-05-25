@@ -779,11 +779,17 @@ function renderCards(data){
 /* ── Canvas drawing (600×600 output, 1080-unit coordinate space) ── */
 function drawCard(idx,card,brand){
   console.log(`[drawCard] 카드 ${idx+1} 시작`);
-  const cv=document.getElementById('cc'+idx);
-  if(!cv) throw new Error(`Canvas cc${idx} not found`);
+  const cvId='cc'+idx;
+  console.log(`[drawCard] Canvas ID 찾기: ${cvId}`);
+  const cv=document.getElementById(cvId);
+  console.log(`[drawCard] Canvas 요소:`, cv, `타입:`, cv?.tagName, `클래스:`, cv?.className);
+  if(!cv) throw new Error(`Canvas ${cvId} not found`);
+  if(cv.tagName !== 'CANVAS') throw new Error(`요소 ${cvId}는 CANVAS가 아니라 ${cv.tagName}`);
   const CW=600;
   cv.width=CW; cv.height=CW;
+  console.log(`[drawCard] Canvas 크기 설정: ${CW}×${CW}`);
   const c=cv.getContext('2d');
+  console.log(`[drawCard] 2D Context:`, c?.constructor?.name);
   if(!c) throw new Error('Canvas context 2d not available');
   c.scale(CW/1080,CW/1080);
   const W=1080, H=1080;
