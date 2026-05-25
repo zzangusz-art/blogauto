@@ -497,29 +497,16 @@ function clearBgImg(){
   if(cardData) renderCards(cardData);
 }
 async function autoFetchBg(q){
-  return new Promise(resolve => {
-    if(!q){console.log('[bg] 검색어 없음'); resolve(); return;}
-
-    const timeout = setTimeout(()=>{
-      console.warn('[bg] 타임아웃 (3초)');
-      resolve();
-    }, 3000);
-
+  return new Promise(resolve=>{
+    if(!q){resolve();return;}
+    const timeout=setTimeout(()=>resolve(),4000);
     fetch(`/api/unsplash?q=${encodeURIComponent(q)}`)
-      .then(r=>{
-        if(!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
+      .then(r=>r.json())
       .then(d=>{
-        console.log('[bg] Unsplash 응답:', d.url?'이미지 URL 수신':'URL 없음');
-        if(!d.url){clearTimeout(timeout); resolve(); return;}
-
-        const img=new Image();
-        img.crossOrigin='anonymous';
-
+        if(!d.url){clearTimeout(timeout);resolve();return;}
+        const img=new Image(); img.crossOrigin='anonymous';
         img.onload=()=>{
           clearTimeout(timeout);
-          console.log('[bg] 이미지 로드 완료:', d.url);
           cardBgImage=img;
           document.getElementById('ithumb').style.backgroundImage=`url(${d.url})`;
           document.getElementById('iname').textContent='AI 자동 배경 (Unsplash)';
@@ -527,20 +514,10 @@ async function autoFetchBg(q){
           document.getElementById('iuplbl').textContent='이미지 변경';
           resolve();
         };
-
-        img.onerror=()=>{
-          clearTimeout(timeout);
-          console.warn('[bg] 이미지 로드 실패:', d.url);
-          resolve();
-        };
-
+        img.onerror=()=>{clearTimeout(timeout);resolve();};
         img.src=d.url;
       })
-      .catch(e=>{
-        clearTimeout(timeout);
-        console.warn('[bg] 요청 실패:', e.message);
-        resolve();
-      });
+      .catch(()=>{clearTimeout(timeout);resolve();});
   });
 }
 
@@ -710,10 +687,8 @@ async function genCards(){
     setTb(d.cards?.[0]?.title||'카드뉴스 생성 완료',`${((d.tokensIn||0)+(d.tokensOut||0)).toLocaleString()} tokens`);
 
     // 자동 배경 이미지 로드 대기 (최대 3초)
-    const bgQ=d.cards?.[0]?.title||d.cards?.[0]?.headline||'';
-    console.log('[genCards] 배경 이미지 자동 fetch 시작:', bgQ);
+    const bgQ=d.bgKeyword||d.cards?.[0]?.title||'';
     await autoFetchBg(bgQ);
-    console.log('[genCards] 배경 이미지 로드 완료, 카드 렌더링');
 
     renderCards(d);
     show('cpzB',true);
@@ -763,91 +738,184 @@ function renderCards(data){
   });
 }
 
-/* ── Canvas drawing (600×600 output, 1080-unit coordinate space) ── */
+/* ── Canvas drawing — Instagram style (600×600 output, 1080-unit space) ── */
 function drawCard(idx,card,brand){
-  const cvId='cnv'+idx;
-  const cv=document.getElementById(cvId);
-  if(!cv) throw new Error(`Canvas ${cvId} not found`);
-  if(cv.tagName !== 'CANVAS') throw new Error(`요소 ${cvId}는 CANVAS가 아니라 ${cv.tagName}`);
-  const CW=600;
-  cv.width=CW; cv.height=CW;
-  const c=cv.getContext('2d');
-  if(!c) throw new Error('Canvas context 2d not available');
+  const cv=document.getElementById('cnv'+idx);
+  if(!cv||cv.tagName!=='CANVAS') return;
+  const CW=600; cv.width=CW; cv.height=CW;
+  const c=cv.getContext('2d'); if(!c) return;
   c.scale(CW/1080,CW/1080);
-  const W=1080, H=1080;
-  const t=getTheme();
-  const F=getFontFamily();
-  if(!F || !t) throw new Error('Theme or font not available');
-  const grad=(x1,y1,x2,y2)=>{
-    const g=c.createLinearGradient(x1,y1,x2,y2);
-    g.addColorStop(0,t.g1); g.addColorStop(1,t.g2);
-    return g;
-  };
+  const W=1080,H=1080,t=getTheme(),F=getFontFamily();
+
+  /* text wrap — uses current textAlign & fillStyle */
   const wrap=(txt,x,y,mw,lh)=>{
-    if(!txt) return y;
-    const chars=[...String(txt)];
-    let line='', cy=y;
+    if(!txt)return y;
+    const chars=[...String(txt)]; let line='',cy=y;
     for(const ch of chars){
       const test=line+ch;
-      if(c.measureText(test).width>mw && line){
-        c.fillText(line,x,cy); line=ch; cy+=lh;
-      }else line=test;
+      if(c.measureText(test).width>mw&&line){c.fillText(line,x,cy);line=ch;cy+=lh;}
+      else line=test;
     }
-    if(line){ c.fillText(line,x,cy); cy+=lh; }
+    if(line){c.fillText(line,x,cy);cy+=lh;}
     return cy;
   };
-  // ── Background ──
-  if(card.type==='title'||card.type==='cta'){
-    c.fillStyle=grad(0,0,W,H); c.fillRect(0,0,W,H);
-  }else{
-    c.fillStyle=t.lb; c.fillRect(0,0,W,H);
-  }
-  // ── Background image ──
-  if(cardBgImage){
-    c.save(); c.globalAlpha=0.2;
+
+  /* draw bg image cover */
+  const drawImg=(alpha)=>{
+    if(!cardBgImage)return;
     const iw=cardBgImage.naturalWidth||cardBgImage.width;
     const ih=cardBgImage.naturalHeight||cardBgImage.height;
-    const sc=Math.max(W/iw,H/ih);
-    const dw=iw*sc, dh=ih*sc;
+    const sc=Math.max(W/iw,H/ih),dw=iw*sc,dh=ih*sc;
+    c.save();c.globalAlpha=alpha;
     c.drawImage(cardBgImage,(W-dw)/2,(H-dh)/2,dw,dh);
     c.restore();
+  };
+
+  /* rounded rect path */
+  const rr=(x,y,w,h,r)=>{
+    c.beginPath();
+    c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);
+    c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);
+    c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();
+  };
+
+  /* ── 타이틀 카드 (01/06) ─────────────────────────────── */
+  if(card.type==='title'){
+    // 배경 그라디언트
+    const bg=c.createLinearGradient(0,0,W,H);
+    bg.addColorStop(0,t.g1);bg.addColorStop(1,t.g2);
+    c.fillStyle=bg;c.fillRect(0,0,W,H);
+    drawImg(0.25);
+    // 텍스트 가독성 오버레이
+    const ov=c.createLinearGradient(0,0,0,H);
+    ov.addColorStop(0,'rgba(0,0,0,0.55)');ov.addColorStop(0.38,'rgba(0,0,0,0.05)');
+    ov.addColorStop(0.62,'rgba(0,0,0,0.05)');ov.addColorStop(1,'rgba(0,0,0,0.62)');
+    c.fillStyle=ov;c.fillRect(0,0,W,H);
+    // 01/06 · 브랜드
+    c.fillStyle='rgba(255,255,255,0.55)';c.font=`500 30px ${F}`;
+    c.textAlign='left';c.fillText('01 / 06',64,80);
+    if(brand){c.textAlign='right';c.fillText(brand,W-64,80);}
+    // 포인트 라인
+    c.fillStyle=t.g2;c.globalAlpha=0.9;c.fillRect(64,98,68,5);c.globalAlpha=1;
+    // 이모지
+    c.font=`130px serif`;c.textAlign='center';c.fillText(card.emoji||'✨',W/2,390);
+    // 제목
+    c.fillStyle='#fff';c.font=`bold 84px ${F}`;c.textAlign='center';
+    const ty=wrap(card.title,W/2,510,W-100,100);
+    // 부제목
+    c.fillStyle='rgba(255,255,255,0.78)';c.font=`42px ${F}`;c.textAlign='center';
+    wrap(card.subtitle,W/2,ty+18,W-130,56);
+    // 스와이프 안내
+    c.fillStyle='rgba(255,255,255,0.38)';c.font=`28px ${F}`;c.textAlign='center';
+    c.fillText('▶  스와이프해서 확인하세요',W/2,H-52);
   }
-  // ── Title/CTA cards ──
-  if(card.type==='title'||card.type==='cta'){
-    c.globalAlpha=0.1; c.fillStyle='#fff';
-    [[W*.88,H*.1,220],[W*.06,H*.9,160],[W*.5,H,320]].forEach(([cx,cy,r])=>{
-      c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2); c.fill();
+
+  /* ── 콘텐츠 카드 (02~05) ─────────────────────────────── */
+  else if(card.type==='content'){
+    // 밝은 배경
+    c.fillStyle=t.lb;c.fillRect(0,0,W,H);
+    drawImg(0.22);
+    c.fillStyle='rgba(255,255,255,0.52)';c.fillRect(0,0,W,H);
+
+    // 워터마크 숫자
+    c.fillStyle=t.g2;c.globalAlpha=0.055;
+    c.font=`bold 440px ${F}`;c.textAlign='right';
+    c.fillText(`0${card.num}`,W+30,H+10);c.globalAlpha=1;
+
+    // 상단 포인트 바 (그라디언트)
+    const topBar=c.createLinearGradient(0,0,W,0);
+    topBar.addColorStop(0,t.g1);topBar.addColorStop(1,t.g2);
+    c.fillStyle=topBar;c.fillRect(0,0,W,10);
+
+    // 번호 배지
+    const ns=`0${card.num}`;
+    c.font=`bold 30px ${F}`;c.textAlign='left';
+    const bw=c.measureText(ns).width+42,bx=60,by=44,bh=58,br=12;
+    c.fillStyle=t.g2;rr(bx,by,bw,bh,br);c.fill();
+    c.fillStyle='#fff';c.textAlign='center';c.fillText(ns,bx+bw/2,by+bh-14);
+
+    // 이모지 (우측 상단)
+    c.font=`96px serif`;c.textAlign='right';c.fillText(card.emoji||'💡',W-56,152);
+
+    // 헤드라인 (왼쪽 정렬, 크고 굵게)
+    const hx=64;
+    c.fillStyle=t.lt;c.font=`bold 64px ${F}`;c.textAlign='left';
+    const hy=wrap(card.headline,hx,270,W-120,82);
+
+    // 포인트 언더라인 (페이드 아웃)
+    const ul=c.createLinearGradient(hx,0,hx+130,0);
+    ul.addColorStop(0,t.g2);ul.addColorStop(1,'rgba(0,0,0,0)');
+    c.fillStyle=ul;c.fillRect(hx,hy+10,130,6);
+
+    // 본문 1문단
+    const p1y=hy+56;
+    c.fillStyle=t.lt;c.globalAlpha=0.88;c.font=`40px ${F}`;c.textAlign='left';
+    const p1end=wrap(card.body1||card.body||'',hx,p1y,W-128,58);
+    c.globalAlpha=1;
+
+    // 구분 점 + 2문단
+    if(card.body2){
+      c.fillStyle=t.g2;c.globalAlpha=0.45;
+      c.beginPath();c.arc(hx+7,p1end+20,5,0,Math.PI*2);c.fill();
+      c.globalAlpha=1;
+      c.fillStyle=t.lt;c.globalAlpha=0.65;c.font=`38px ${F}`;c.textAlign='left';
+      wrap(card.body2,hx,p1end+38,W-128,52);
+      c.globalAlpha=1;
+    }
+
+    // 하단 스트립 + 브랜드
+    c.fillStyle=t.g2;c.globalAlpha=0.07;c.fillRect(0,H-90,W,90);c.globalAlpha=1;
+    if(brand){
+      c.fillStyle=t.lt;c.globalAlpha=0.36;c.font=`28px ${F}`;c.textAlign='right';
+      c.fillText(brand,W-64,H-30);c.globalAlpha=1;
+    }
+  }
+
+  /* ── CTA 카드 (06/06) ────────────────────────────────── */
+  else{
+    // 강한 그라디언트
+    const bg=c.createLinearGradient(0,0,W,H);
+    bg.addColorStop(0,t.g1);bg.addColorStop(1,t.g2);
+    c.fillStyle=bg;c.fillRect(0,0,W,H);
+    drawImg(0.12);
+    // 데코 서클
+    c.globalAlpha=0.1;c.fillStyle='#fff';
+    [[W*0.92,H*0.06,210],[W*0.04,H*0.92,160],[W*0.5,H*1.06,340]].forEach(([cx,cy,r])=>{
+      c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);c.fill();
     });
     c.globalAlpha=1;
-    const num=card.type==='title'?'01':'06';
-    c.fillStyle='rgba(255,255,255,0.35)'; c.font=`bold 32px ${F}`; c.textAlign='right'; c.fillText(num,W-60,80);
-    c.font=`130px serif`; c.textAlign='center'; c.fillText(card.emoji||'✨',W/2,card.type==='title'?390:370);
-    c.fillStyle='#fff'; c.font=`bold 70px ${F}`; c.textAlign='center';
-    const ty=wrap(card.title||card.headline,W/2,card.type==='title'?530:510,W-120,84);
-    c.fillStyle='rgba(255,255,255,0.8)'; c.font=`38px ${F}`;
-    wrap(card.subtitle||card.body,W/2,ty+12,W-160,50);
-    if(brand){ c.fillStyle='rgba(255,255,255,0.4)'; c.font=`27px ${F}`; c.textAlign='center'; c.fillText(brand,W/2,H-54); }
-  }
-  // ── Content cards ──
-  else{
-    c.fillStyle=grad(0,0,W,0); c.fillRect(0,0,W,14);
-    c.fillStyle=t.g2; c.globalAlpha=0.06; c.font=`bold 280px ${F}`; c.textAlign='right'; c.fillText(`0${card.num}`,W-10,290); c.globalAlpha=1;
-    const ns=`0${card.num}`; c.font=`bold 28px ${F}`; c.textAlign='left';
-    const bw=c.measureText(ns).width+34, bx=56, by=52, bh=48, br=9;
-    c.fillStyle=t.g2; c.beginPath();
-    c.moveTo(bx+br,by); c.lineTo(bx+bw-br,by); c.quadraticCurveTo(bx+bw,by,bx+bw,by+br);
-    c.lineTo(bx+bw,by+bh-br); c.quadraticCurveTo(bx+bw,by+bh,bx+bw-br,by+bh);
-    c.lineTo(bx+br,by+bh); c.quadraticCurveTo(bx,by+bh,bx,by+bh-br);
-    c.lineTo(bx,by+br); c.quadraticCurveTo(bx,by,bx+br,by); c.closePath(); c.fill();
-    c.fillStyle='#fff'; c.textAlign='center'; c.fillText(ns,bx+bw/2,by+bh-11);
-    c.font=`110px serif`; c.textAlign='center'; c.fillText(card.emoji||'💡',W/2,430);
-    c.fillStyle=t.lt; c.font=`bold 60px ${F}`; c.textAlign='center';
-    const hy=wrap(card.headline,W/2,575,W-120,74);
-    c.fillStyle=t.g2; c.fillRect(W/2-35,hy+10,70,5);
-    c.fillStyle=t.lt; c.globalAlpha=0.68; c.font=`36px ${F}`;
-    wrap(card.body,W/2,hy+42,W-160,48);
-    c.globalAlpha=1;
-    if(brand){ c.fillStyle=t.lt; c.globalAlpha=0.22; c.font=`25px ${F}`; c.textAlign='center'; c.fillText(brand,W/2,H-54); c.globalAlpha=1; }
+    // 상하 어두운 오버레이
+    const ov=c.createLinearGradient(0,0,0,H);
+    ov.addColorStop(0,'rgba(0,0,0,0.48)');ov.addColorStop(0.5,'rgba(0,0,0,0)');
+    ov.addColorStop(1,'rgba(0,0,0,0.52)');
+    c.fillStyle=ov;c.fillRect(0,0,W,H);
+    // 06/06 · 브랜드
+    c.fillStyle='rgba(255,255,255,0.52)';c.font=`500 30px ${F}`;
+    c.textAlign='left';c.fillText('06 / 06',64,80);
+    if(brand){c.textAlign='right';c.fillText(brand,W-64,80);}
+    // 이모지
+    c.font=`126px serif`;c.textAlign='center';c.fillText(card.emoji||'🙌',W/2,385);
+    // 헤드라인
+    c.fillStyle='#fff';c.font=`bold 76px ${F}`;c.textAlign='center';
+    const ty=wrap(card.headline,W/2,505,W-100,92);
+    // 1문단
+    c.fillStyle='rgba(255,255,255,0.82)';c.font=`40px ${F}`;c.textAlign='center';
+    const p1end=wrap(card.body1||card.body||'',W/2,ty+20,W-130,56);
+    // 2문단
+    if(card.body2){
+      c.fillStyle='rgba(255,255,255,0.6)';c.font=`36px ${F}`;c.textAlign='center';
+      wrap(card.body2,W/2,p1end+12,W-150,50);
+    }
+    // CTA 버튼
+    const btnTxt='👆 저장하고 팔로우하기';
+    c.font=`bold 34px ${F}`;c.textAlign='center';
+    const btnW=c.measureText(btnTxt).width+80;
+    const btnX=(W-btnW)/2,btnY=H-188,btnH=76,btnR=38;
+    c.fillStyle='rgba(255,255,255,0.2)';rr(btnX,btnY,btnW,btnH,btnR);c.fill();
+    c.strokeStyle='rgba(255,255,255,0.42)';c.lineWidth=2;
+    rr(btnX,btnY,btnW,btnH,btnR);c.stroke();
+    c.fillStyle='#fff';c.fillText(btnTxt,W/2,btnY+btnH/2+13);
   }
 }
 

@@ -324,25 +324,27 @@ app.post('/api/cardnews', apiLimiter, async (req, res) => {
     const message = await anthropic.messages.create({
       model:      process.env.MODEL || 'claude-sonnet-4-6',
       max_tokens: 2048,
-      system: `당신은 SNS 카드뉴스 전문 에디터입니다.
+      system: `당신은 인스타그램 카드뉴스 전문 에디터입니다.
 주어진 원고를 분석해 6장의 카드뉴스 콘텐츠를 JSON으로만 반환합니다.
+핵심을 강조하고 읽기 쉬운 짧은 문장, 2문단 구조로 작성합니다.
 JSON 이외의 텍스트(설명, 마크다운 코드블록 포함)는 절대 출력하지 마세요.`,
       messages: [{
         role: 'user',
-        content: `다음 원고로 인스타그램/SNS 카드뉴스 6장을 만들어주세요.
+        content: `다음 원고로 인스타그램 트렌드 카드뉴스 6장을 만들어주세요.
 
 원고:
 ${article.trim()}
 
 반드시 아래 JSON 형식으로만 응답하세요:
 {
+  "bgKeyword": "Unsplash 검색용 영문 키워드 2~3단어 (주제와 관련된 추상·자연·사물 장면)",
   "cards": [
-    {"type":"title","title":"메인 제목(20자 이내)","subtitle":"부제목(35자 이내)","emoji":"이모지1개"},
-    {"type":"content","num":1,"headline":"포인트 제목(15자 이내)","body":"핵심 내용(55자 이내)","emoji":"이모지1개"},
-    {"type":"content","num":2,"headline":"포인트 제목(15자 이내)","body":"핵심 내용(55자 이내)","emoji":"이모지1개"},
-    {"type":"content","num":3,"headline":"포인트 제목(15자 이내)","body":"핵심 내용(55자 이내)","emoji":"이모지1개"},
-    {"type":"content","num":4,"headline":"포인트 제목(15자 이내)","body":"핵심 내용(55자 이내)","emoji":"이모지1개"},
-    {"type":"cta","headline":"마무리 메시지(20자 이내)","body":"행동 유도 문구(40자 이내)","emoji":"이모지1개"}
+    {"type":"title","title":"메인 제목(18자 이내)","subtitle":"흥미로운 부제목(30자 이내)","emoji":"이모지1개"},
+    {"type":"content","num":1,"headline":"핵심 포인트(14자 이내)","body1":"첫 번째 문단 핵심 팩트(45자 이내)","body2":"보충 설명이나 예시(40자 이내)","emoji":"이모지1개"},
+    {"type":"content","num":2,"headline":"핵심 포인트(14자 이내)","body1":"첫 번째 문단 핵심 팩트(45자 이내)","body2":"보충 설명이나 예시(40자 이내)","emoji":"이모지1개"},
+    {"type":"content","num":3,"headline":"핵심 포인트(14자 이내)","body1":"첫 번째 문단 핵심 팩트(45자 이내)","body2":"보충 설명이나 예시(40자 이내)","emoji":"이모지1개"},
+    {"type":"content","num":4,"headline":"핵심 포인트(14자 이내)","body1":"첫 번째 문단 핵심 팩트(45자 이내)","body2":"보충 설명이나 예시(40자 이내)","emoji":"이모지1개"},
+    {"type":"cta","headline":"마무리 핵심 메시지(18자 이내)","body1":"첫 번째 행동 유도 문구(38자 이내)","body2":"두 번째 행동 유도 문구(35자 이내)","emoji":"이모지1개"}
   ]
 }`
       }]
