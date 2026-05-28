@@ -535,12 +535,14 @@ function clearBgImg(){
 async function autoFetchBg(q){
   return new Promise(resolve=>{
     if(!q){resolve();return;}
-    const timeout=setTimeout(()=>resolve(),4000);
+    // 서버에서 base64로 받아오므로 네트워크 시간 포함 10초 대기
+    const timeout=setTimeout(()=>resolve(),10000);
     fetch(`/api/unsplash?q=${encodeURIComponent(q)}`)
       .then(r=>r.json())
       .then(d=>{
         if(!d.url){clearTimeout(timeout);resolve();return;}
-        const img=new Image(); img.crossOrigin='anonymous';
+        const img=new Image();
+        // base64 data URL은 동일 출처이므로 crossOrigin 불필요
         img.onload=()=>{
           clearTimeout(timeout);
           cardBgImage=img;

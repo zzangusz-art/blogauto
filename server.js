@@ -325,6 +325,7 @@ app.get('/api/unsplash', async (req, res) => {
   }
 
   try {
+    // 1) Unsplash API로 이미지 URL 획득
     const r = await fetch(
       `https://api.unsplash.com/photos/random?query=${encodeURIComponent(q)}&orientation=squarish&client_id=${key}`,
       { headers: { 'Accept-Version': 'v1' } }
@@ -334,9 +335,24 @@ app.get('/api/unsplash', async (req, res) => {
       return res.json({ url: null });
     }
     const d = await r.json();
-    const url = d.urls?.regular || d.urls?.small || null;
-    console.log(`[unsplash] 응답: ${url ? '✓ URL 수신' : '✗ URL 없음'}`);
-    res.json({ url });
+    const imgUrl = d.urls?.small || d.urls?.regular || null;
+    if (!imgUrl) {
+      console.log('[unsplash] URL 없음');
+      return res.json({ url: null });
+    }
+
+    // 2) 서버에서 이미지 직접 다운로드 → base64 반환 (클라이언트 CORS 문제 완전 우회)
+    const imgRes = await fetch(imgUrl);
+    if (!imgRes.ok) {
+      console.error(`[unsplash] 이미지 다운로드 실패: ${imgRes.status}`);
+      return res.json({ url: null });
+    }
+    const buf = await imgRes.arrayBuffer();
+    const b64 = Buffer.from(buf).toString('base64');
+    const ct  = imgRes.headers.get('content-type') || 'image/jpeg';
+    const dataUrl = `data:${ct};base64,${b64}`;
+    console.log(`[unsplash] ✓ base64 완료 (${(buf.byteLength / 1024).toFixed(0)}KB)`);
+    res.json({ url: dataUrl });
   } catch (e) {
     console.error('[unsplash] 요청 실패:', e.message);
     res.json({ url: null });
