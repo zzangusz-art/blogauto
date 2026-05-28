@@ -29,6 +29,9 @@ db.exec(`
   )
 `);
 
+// category 컬럼 마이그레이션 (이미 존재하면 무시)
+try { db.exec("ALTER TABLE posts ADD COLUMN category TEXT DEFAULT ''"); } catch {}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS cardnews_posts (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -55,10 +58,11 @@ const apiLimiter = rateLimit({
 
 // ── 프롬프트 헬퍼 ────────────────────────────────────────
 const TONE_MAP = {
-  '정보성': '유용한 정보를 명확하고 쉽게 전달하는 정보성 문체로. 수치, 사실, 팁을 적극 활용하세요.',
+  '정보성': '유용한 정보를 명확하고 쉽게 전달하는 정보성 문체로. 수치·사실·팁을 적극 활용하세요.',
   '친근한': '독자와 대화하듯 편안하고 친근한 구어체로. 이모지는 사용하지 않습니다.',
   '전문적': '전문성과 신뢰를 드러내는 격식체로. 전문 용어를 적절히 사용하되 독자가 이해할 수 있게 설명하세요.',
-  '감성적': '독자의 공감을 이끌어내는 따뜻하고 감성적인 문체로. 경험과 감정을 담아 서술하세요.'
+  '감성적': '독자의 공감을 이끌어내는 따뜻하고 감성적인 문체로. 경험과 감정을 담아 서술하세요.',
+  '후기성': '실제 수강생·합격자의 생생한 후기 형식으로. "처음엔 막막했지만", "컨설팅 받고 나서" 같은 전후 변화를 중심으로, 구체적 에피소드와 감정의 흐름을 담아 신뢰감 있게 서술하세요.'
 };
 
 const LENGTH_MAP = {
@@ -67,13 +71,90 @@ const LENGTH_MAP = {
   '길게':  { desc: '2000~2500자 분량의 깊이 있는 글로',       sections: 4 }
 };
 
-function buildPrompt(keywords, features, tone, length) {
+// ── 빅링커 6대 카테고리 ──────────────────────────────────
+const CATEGORY_MAP = {
+  '대입컨설팅': {
+    label:  '대학 입시 생기부·수시&정시 면접 컨설팅 (고1~고3)',
+    target: '고1~고3 학생 및 학부모',
+    coreKw: '생기부, 학생부종합전형, 수시, 정시, 면접, 세부능력특기사항, 자기소개서, 대입 컨설팅',
+    seo:    '제목에 "생기부", "수시", "합격"을 포함하고 학년별·전형별 키워드(학종, 교과, 정시)를 본문에 자연스럽게 반복합니다.',
+    aeo:    '## 자주 묻는 질문 섹션을 추가하여 "생기부 관리 언제부터 해야 하나요?", "수시 vs 정시 어떤 전형이 유리한가요?", "면접에서 가장 많이 나오는 질문은?" 등에 직접 답변하는 Q&A 형식으로 작성합니다.',
+    geo:    '학종·교과·정시 전형별 준비 단계를 번호 목록으로 구조화하고, 합격 가능 점수대·경쟁률 등 수치 정보를 포함하여 AI 검색이 인용하기 좋게 작성합니다.',
+    extra:  '불안해하는 학부모와 학생 양쪽의 심리를 공감하되 실질적 해결책으로 신뢰를 주는 어조로 작성합니다.'
+  },
+  '편입컨설팅': {
+    label:  '편입 컨설팅 (편입 영어·수학·논술)',
+    target: '대학 재학생·졸업생, 편입 준비생',
+    coreKw: '편입, 편입 영어, 편입 수학, 편입 논술, 학사 편입, 일반 편입, 편입 전형',
+    seo:    '제목에 "편입" 키워드와 준비 기간·합격 전략·과목명을 포함합니다.',
+    aeo:    '## 자주 묻는 질문에 "편입 준비 기간은 얼마나 필요한가요?", "편입 영어 어떻게 공부해야 하나요?", "편입 수학 범위가 어떻게 되나요?" 등을 Q&A 형식으로 작성합니다.',
+    geo:    '학사 편입·일반 편입 유형 비교표, 시험 과목별 준비 전략·추천 교재를 단계별 목록으로 구조화합니다.',
+    extra:  '현실적이고 실용적인 어조로 편입 준비생의 고민에 공감하고 구체적인 실행 계획을 제시합니다.'
+  },
+  '대학원컨설팅': {
+    label:  '대학원 컨설팅 (자기소개서·학업계획서·면접)',
+    target: '대학 졸업예정자, 직장인 대학원 진학 희망자',
+    coreKw: '대학원, 자기소개서, 학업계획서, 연구계획서, 대학원 면접, 대학원 입시',
+    seo:    '제목에 "대학원 자기소개서", "학업계획서 쓰는 법" 등 검색 빈도 높은 구문을 포함합니다.',
+    aeo:    '## 자주 묻는 질문에 "대학원 자기소개서 어떻게 써야 하나요?", "직장인도 대학원 다닐 수 있나요?", "학업계획서와 연구계획서 차이는?" 등을 Q&A로 작성합니다.',
+    geo:    '지원 서류 준비 단계(지원 동기·연구 주제·학업 계획 작성법)와 면접 준비 체크리스트를 목록 형식으로 구조화합니다.',
+    extra:  '학문적 전문성과 현실 조언의 균형을 맞추며 진학을 고민하는 독자에게 용기를 주는 어조로 작성합니다.'
+  },
+  '취업컨설팅': {
+    label:  '취업 컨설팅 (대기업·공기업·금융·병원·중견중소)',
+    target: '취업 준비생, 이직 준비생',
+    coreKw: '취업, 자기소개서, 면접, 대기업 취업, 공기업 시험, 금융권 취업, 병원 취업, NCS',
+    seo:    '제목에 목표 기업군(대기업·공기업·금융·병원)과 "자소서", "면접 합격 전략"을 포함합니다.',
+    aeo:    '## 자주 묻는 질문에 "자기소개서 어떻게 시작해야 하나요?", "면접에서 가장 중요한 것은?", "공기업 NCS 어떻게 준비하나요?" 등을 Q&A 형식으로 작성합니다.',
+    geo:    '최신 채용 트렌드(AI 면접·블라인드 채용·직무 중심), 직무별 준비 로드맵과 핵심 스펙을 단계별 목록으로 구조화합니다.',
+    extra:  '취준생의 불안과 도전을 공감하며 실용적인 팁과 동기부여를 균형 있게 제공합니다.'
+  },
+  '논문컨설팅': {
+    label:  '논문 컨설팅',
+    target: '대학원생, 연구자, 논문 작성 중인 학부생',
+    coreKw: '논문 작성법, 학위논문, 논문 교정, 연구방법론, 통계분석, 논문 인용 방법',
+    seo:    '제목에 "논문 작성법", "논문 교정" 등 검색 빈도 높은 구문을 포함합니다.',
+    aeo:    '## 자주 묻는 질문에 "논문 서론 어떻게 시작하나요?", "논문 분량은 어느 정도 해야 하나요?", "통계 분석 어떤 방법을 써야 하나요?" 등을 Q&A로 작성합니다.',
+    geo:    '논문 구조(서론→이론적 배경→연구방법→결과→결론·제언) 각 파트 작성법과 주의사항을 단계별 목록으로 구조화합니다.',
+    extra:  '학문적 신뢰감을 유지하면서 복잡한 논문 작성 과정을 명확하고 단계적으로 안내하는 어조로 작성합니다.'
+  },
+  '기업교육컨설팅': {
+    label:  '기업교육 컨설팅',
+    target: '기업 HR·교육 담당자, 경영진, 팀장급 이상',
+    coreKw: '기업교육, 임직원 교육, 직무교육, HRD, 조직 역량 강화, 기업 연수, 맞춤형 교육',
+    seo:    '제목에 "기업교육", "임직원 역량 강화" 등을 포함하고 업종별·직급별 키워드를 활용합니다.',
+    aeo:    '## 자주 묻는 질문에 "기업교육 효과는 어떻게 측정하나요?", "맞춤형 교육 프로그램 어떻게 구성하나요?", "외부 교육 vs 사내 교육 어떤 게 좋나요?" 등을 Q&A로 작성합니다.',
+    geo:    '교육 유형(집합·온라인·블렌디드러닝), ROI 측정 방법, 최신 HRD 트렌드(마이크로러닝·AI 활용 교육)를 목록화하여 구조화합니다.',
+    extra:  '비즈니스 성과와 ROI 관점에서 전문적으로 서술하고 의사결정자를 설득하는 논리적 어조로 작성합니다.'
+  }
+};
+
+function buildPrompt(keywords, features, tone, length, category) {
   const toneGuide   = TONE_MAP[tone]   || TONE_MAP['정보성'];
   const lengthGuide = LENGTH_MAP[length] || LENGTH_MAP['보통'];
+  const cat = CATEGORY_MAP[category] || null;
+
+  const catBlock = cat
+    ? `**카테고리:** ${cat.label}
+**핵심 타겟:** ${cat.target}
+**카테고리 핵심 키워드:** ${cat.coreKw}`
+    : '';
+
+  const ruleNum = cat ? 11 : 7;
+  const extraRules = cat
+    ? `7. **SEO 최적화:** ${cat.seo}
+8. **AEO 최적화(Answer Engine):** ${cat.aeo}
+9. **GEO 최적화(AI 검색엔진):** ${cat.geo}
+10. **독자 공감 포인트:** ${cat.extra}
+${ruleNum}. 글 맨 끝에 빈 줄을 추가하고 다음 형식으로 태그를 추가합니다:
+    \`태그: #태그1 #태그2 #태그3 #태그4 #태그5\``
+    : `7. 글 맨 끝에 빈 줄을 추가하고 다음 형식으로 태그를 추가합니다:
+   \`태그: #태그1 #태그2 #태그3 #태그4 #태그5\``;
 
   return `다음 조건으로 블로그 글을 작성해주세요.
 
 **키워드:** ${keywords}
+${catBlock}
 ${features ? `**특징 및 요구사항:** ${features}` : ''}
 **글투:** ${toneGuide}
 **분량:** ${lengthGuide.desc} (본문 섹션 ${lengthGuide.sections}개)
@@ -84,10 +165,10 @@ ${features ? `**특징 및 요구사항:** ${features}` : ''}
 1. 마크다운 형식으로 작성합니다
 2. 제목(#)은 딱 하나만 사용하고, 소제목은 ##을 사용합니다
 3. 첫 문단은 독자의 관심을 끄는 훅(Hook)으로 시작합니다
-4. 키워드를 제목과 본문에 자연스럽게 반복 사용합니다 (SEO 최적화)
-5. 마지막 섹션(## 마치며 또는 비슷한 제목)에서 핵심을 정리하고 독자에게 행동을 유도합니다
-6. 글 맨 끝에 빈 줄을 추가하고, 다음 형식으로 태그를 추가합니다:
-   \`태그: #태그1 #태그2 #태그3 #태그4 #태그5\`
+4. 키워드를 제목과 본문에 자연스럽게 반복 사용합니다
+5. 마지막 섹션(## 마치며)에서 핵심을 정리하고 독자에게 행동을 유도합니다
+6. **줄바꿈 규칙(필수):** 본문 텍스트는 약 20자마다 어미(~습니다/~입니다/~에요/~요/~죠/~며/~고/~지만/~서/~면/~는데) 뒤에서 줄바꿈합니다. 한 줄이 절대 25자를 넘지 않도록 합니다. 마크다운 제목·리스트 항목·FAQ 질문·표는 예외입니다.
+${extraRules}
 
 지금 바로 블로그 글을 작성해주세요.`;
 }
@@ -96,7 +177,7 @@ ${features ? `**특징 및 요구사항:** ${features}` : ''}
 
 // POST /api/generate — 글 생성
 app.post('/api/generate', apiLimiter, async (req, res) => {
-  const { keywords, features = '', tone = '정보성', length = '보통' } = req.body;
+  const { keywords, features = '', tone = '정보성', length = '보통', category = '' } = req.body;
 
   if (!keywords?.trim()) {
     return res.status(400).json({ error: '키워드는 필수입니다.' });
@@ -109,10 +190,11 @@ app.post('/api/generate', apiLimiter, async (req, res) => {
     const message = await anthropic.messages.create({
       model:      process.env.MODEL || 'claude-sonnet-4-6',
       max_tokens: 4096,
-      system: `당신은 SEO와 콘텐츠 마케팅에 특화된 한국어 전문 블로그 작가입니다.
-독자가 처음부터 끝까지 읽고 싶어지는 매력적인 블로그 글을 마크다운 형식으로 작성합니다.
-절대로 영어로 작성하지 않으며, 모든 글은 한국어로 작성합니다.`,
-      messages: [{ role: 'user', content: buildPrompt(keywords.trim(), features.trim(), tone, length) }]
+      system: `당신은 AEO·GEO·SEO에 특화된 한국어 블로그 전문 작가입니다.
+빅링커(biglinker) 교육 컨설팅 플랫폼의 블로그 원고를 작성하며,
+독자가 끝까지 읽고 싶어지는 매력적인 글을 마크다운 형식으로 씁니다.
+모든 글은 한국어로만 작성합니다.`,
+      messages: [{ role: 'user', content: buildPrompt(keywords.trim(), features.trim(), tone, length, category.trim()) }]
     });
 
     const content    = message.content[0].text;
@@ -120,12 +202,13 @@ app.post('/api/generate', apiLimiter, async (req, res) => {
     const title      = titleMatch ? titleMatch[1].trim() : keywords.split(',')[0].trim();
 
     const row = db.prepare(`
-      INSERT INTO posts (keywords, features, tone, length, title, content, model, tokens_in, tokens_out)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO posts (keywords, features, tone, length, category, title, content, model, tokens_in, tokens_out)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       keywords.trim(),
       features.trim() || null,
       tone, length,
+      category.trim() || null,
       title, content,
       message.model,
       message.usage.input_tokens,
@@ -136,6 +219,7 @@ app.post('/api/generate', apiLimiter, async (req, res) => {
       id:        row.lastInsertRowid,
       title,
       content,
+      category:  category.trim() || null,
       model:     message.model,
       tokensIn:  message.usage.input_tokens,
       tokensOut: message.usage.output_tokens
@@ -233,7 +317,7 @@ const bulkLimiter = rateLimit({
 });
 
 app.post('/api/generate/bulk', bulkLimiter, async (req, res) => {
-  const { items, tone = '정보성', length = '보통' } = req.body;
+  const { items, tone = '정보성', length = '보통', category = '' } = req.body;
 
   if (!Array.isArray(items) || !items.length)
     return res.status(400).json({ error: '생성할 항목이 없습니다.' });
@@ -271,10 +355,11 @@ app.post('/api/generate/bulk', bulkLimiter, async (req, res) => {
       const message = await anthropic.messages.create({
         model:      process.env.MODEL || 'claude-sonnet-4-6',
         max_tokens: 4096,
-        system: `당신은 SEO와 콘텐츠 마케팅에 특화된 한국어 전문 블로그 작가입니다.
-독자가 처음부터 끝까지 읽고 싶어지는 매력적인 블로그 글을 마크다운 형식으로 작성합니다.
-절대로 영어로 작성하지 않으며, 모든 글은 한국어로 작성합니다.`,
-        messages: [{ role: 'user', content: buildPrompt(keywords.trim(), features.trim(), tone, length) }]
+        system: `당신은 AEO·GEO·SEO에 특화된 한국어 블로그 전문 작가입니다.
+빅링커(biglinker) 교육 컨설팅 플랫폼의 블로그 원고를 작성하며,
+독자가 끝까지 읽고 싶어지는 매력적인 글을 마크다운 형식으로 씁니다.
+모든 글은 한국어로만 작성합니다.`,
+        messages: [{ role: 'user', content: buildPrompt(keywords.trim(), features.trim(), tone, length, category.trim()) }]
       });
 
       const content    = message.content[0].text;
@@ -282,11 +367,12 @@ app.post('/api/generate/bulk', bulkLimiter, async (req, res) => {
       const title      = titleMatch ? titleMatch[1].trim() : keywords.split(',')[0].trim();
 
       const row = db.prepare(`
-        INSERT INTO posts (keywords, features, tone, length, title, content, model, tokens_in, tokens_out)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO posts (keywords, features, tone, length, category, title, content, model, tokens_in, tokens_out)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         keywords.trim(), features.trim() || null,
-        tone, length, title, content,
+        tone, length, category.trim() || null,
+        title, content,
         message.model,
         message.usage.input_tokens,
         message.usage.output_tokens

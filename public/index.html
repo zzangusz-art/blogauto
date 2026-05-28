@@ -267,16 +267,34 @@
     <!-- 단건 섹션 -->
     <div class="sec" id="s0">
       <div class="fld">
+        <label>카테고리 <span class="opt">선택</span></label>
+        <select id="ct">
+          <option value="">— 전체 / 미분류 —</option>
+          <option value="대입컨설팅">🎓 대학 입시 생기부·수시&amp;정시 면접 컨설팅</option>
+          <option value="편입컨설팅">📚 편입 컨설팅</option>
+          <option value="대학원컨설팅">🔬 대학원 컨설팅</option>
+          <option value="취업컨설팅">💼 취업 컨설팅</option>
+          <option value="논문컨설팅">📝 논문 컨설팅</option>
+          <option value="기업교육컨설팅">🏢 기업교육 컨설팅</option>
+        </select>
+      </div>
+      <div class="fld">
         <label>키워드 <span class="req">필수</span></label>
-        <textarea id="kw" rows="3" placeholder="예: 다이어트, 건강한 식단, 체중 감량&#10;(쉼표로 구분해 여러 개 입력 가능)"></textarea>
+        <textarea id="kw" rows="3" placeholder="예: 생기부 관리, 학생부종합전형, 고2 수시 준비&#10;(쉼표로 구분해 여러 개 입력 가능)"></textarea>
       </div>
       <div class="fld">
         <label>특징 / 옵션 <span class="opt">선택</span></label>
-        <textarea id="ft" rows="3" placeholder="예: 30대 직장인 타겟, 과학적 근거 포함&#10;실천 가능한 팁 위주"></textarea>
+        <textarea id="ft" rows="2" placeholder="예: 고2 타겟, 수도권 대학 준비, 이과 계열"></textarea>
       </div>
       <div class="r2">
         <div class="fld"><label>글 톤</label>
-          <select id="tn"><option value="정보성">📊 정보성</option><option value="친근한">😊 친근한</option><option value="전문적">🎓 전문적</option><option value="감성적">💝 감성적</option></select>
+          <select id="tn">
+            <option value="정보성">📊 정보성</option>
+            <option value="친근한">😊 친근한</option>
+            <option value="전문적">🎓 전문적</option>
+            <option value="감성적">💝 감성적</option>
+            <option value="후기성">⭐ 후기성</option>
+          </select>
         </div>
         <div class="fld"><label>글 길이</label>
           <select id="ln"><option value="짧게">📝 짧게</option><option value="보통" selected>📄 보통</option><option value="길게">📃 길게</option></select>
@@ -286,23 +304,41 @@
         <span id="si">✨</span><span id="st">블로그 글 생성</span>
       </button>
       <p class="sph">Ctrl+Enter 로도 생성할 수 있습니다</p>
-      <div class="tip"><strong>팁:</strong> "운동" → "30분 홈트레이닝, 복근 운동, 초보자"처럼 구체적으로 입력하면 더 좋은 글이 생성됩니다.</div>
+      <div class="tip"><strong>팁:</strong> 카테고리를 선택하면 SEO·AEO·GEO가 자동 최적화됩니다. 후기성 글톤은 실제 사례 중심 후기 포맷으로 작성됩니다.</div>
       <div id="se" style="display:none"></div>
     </div>
 
     <!-- 다량 섹션 -->
     <div class="sec hidden" id="s1">
       <div class="fld">
+        <label>카테고리 <span class="opt">선택</span></label>
+        <select id="bkct">
+          <option value="">— 전체 / 미분류 —</option>
+          <option value="대입컨설팅">🎓 대학 입시 생기부·수시&amp;정시 면접 컨설팅</option>
+          <option value="편입컨설팅">📚 편입 컨설팅</option>
+          <option value="대학원컨설팅">🔬 대학원 컨설팅</option>
+          <option value="취업컨설팅">💼 취업 컨설팅</option>
+          <option value="논문컨설팅">📝 논문 컨설팅</option>
+          <option value="기업교육컨설팅">🏢 기업교육 컨설팅</option>
+        </select>
+      </div>
+      <div class="fld">
         <label>키워드 목록 <span class="req">필수</span></label>
         <div class="hint">각 줄 = 블로그 글 1개 (최대 20개)<br>특징은 <code>|</code> 로 구분: <code>키워드 | 특징</code></div>
-        <textarea id="bki" rows="11"
-          placeholder="다이어트, 건강한 식단&#10;홈트레이닝, 복근 운동 | 초보자 대상&#10;건강한 아침 습관&#10;스트레스 해소법 | 직장인 타겟"
+        <textarea id="bki" rows="10"
+          placeholder="생기부 관리 방법, 고1 생기부&#10;수시 자기소개서 쓰는 법 | 이과 계열&#10;편입 영어 공부법&#10;대학원 자기소개서 | 직장인 진학"
           oninput="updCnt()"></textarea>
         <div class="cnt" id="bkc">0개 작성 예정</div>
       </div>
       <div class="r2">
         <div class="fld"><label>글 톤</label>
-          <select id="bktn"><option value="정보성">📊 정보성</option><option value="친근한">😊 친근한</option><option value="전문적">🎓 전문적</option><option value="감성적">💝 감성적</option></select>
+          <select id="bktn">
+            <option value="정보성">📊 정보성</option>
+            <option value="친근한">😊 친근한</option>
+            <option value="전문적">🎓 전문적</option>
+            <option value="감성적">💝 감성적</option>
+            <option value="후기성">⭐ 후기성</option>
+          </select>
         </div>
         <div class="fld"><label>글 길이</label>
           <select id="bkln"><option value="짧게">📝 짧게</option><option value="보통" selected>📄 보통</option><option value="길게">📃 길게</option></select>
@@ -544,12 +580,12 @@ function setMode(m){
 
 /* ═══ SINGLE GENERATE ═══ */
 async function genSingle(){
-  const kw=V('kw'),ft=V('ft'),tn=V('tn'),ln=V('ln');
+  const kw=V('kw'),ft=V('ft'),tn=V('tn'),ln=V('ln'),ct=V('ct');
   if(!kw){showErr('se','키워드를 입력해주세요.');return;}
   hideErr('se'); setBusy('sg','si','st',true,'생성 중…','✨','블로그 글 생성');
   setPane0Loading();
   try{
-    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keywords:kw,features:ft,tone:tn,length:ln})});
+    const r=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keywords:kw,features:ft,tone:tn,length:ln,category:ct})});
     const d=await r.json();
     if(!r.ok){showErr('se',d.error||'글 생성 실패');setPane0Empty();return;}
     curPost=d; renderSingle(d);
@@ -592,7 +628,7 @@ async function genBulk(){
   if(!items.length){showErr('be','키워드를 입력해주세요.');return;}
   if(items.length>20){showErr('be','최대 20개까지 입력 가능합니다.');return;}
   hideErr('be');
-  const tone=V('bktn'),length=V('bkln');
+  const tone=V('bktn'),length=V('bkln'),category=V('bkct');
   bulkRes=new Array(items.length).fill(null); bulkRun=true;
   setBusy('bg','bi2','bt2',true,'생성 중…','⚡','일괄 생성');
   document.getElementById('bfoot').style.display='none';
@@ -600,7 +636,7 @@ async function genBulk(){
   const prog=document.getElementById('bprog'); prog.style.display='flex';
   updProg(0,items.length); show('zpB',false);
   try{
-    const r=await fetch('/api/generate/bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,tone,length})});
+    const r=await fetch('/api/generate/bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items,tone,length,category})});
     if(!r.ok){const e=await r.json().catch(()=>({}));showErr('be',e.error||'요청 실패');bulkRun=false;setBusy('bg','bi2','bt2',false,'','⚡','일괄 생성');return;}
     const reader=r.body.getReader(),dec=new TextDecoder();let buf='';
     while(true){
@@ -971,10 +1007,11 @@ async function loadHist(){
   try{
     const ps=await(await fetch('/api/posts')).json();
     if(!ps.length){b.innerHTML='<div class="emp">아직 생성된 블로그 글이 없습니다.</div>';return;}
+    const CAT_ICON={'대입컨설팅':'🎓','편입컨설팅':'📚','대학원컨설팅':'🔬','취업컨설팅':'💼','논문컨설팅':'📝','기업교육컨설팅':'🏢'};
     b.innerHTML=ps.map(p=>`
       <div class="hi" onclick="loadPost(${p.id})">
         <div class="hin">
-          <div class="hit">${esc(p.title||p.keywords)}</div>
+          <div class="hit">${p.category?`<span style="font-size:10px;background:var(--acd);color:var(--acl);border:1px solid rgba(99,102,241,.25);border-radius:4px;padding:1px 6px;margin-right:5px;vertical-align:middle">${CAT_ICON[p.category]||''} ${esc(p.category)}</span>`:''}${esc(p.title||p.keywords)}</div>
           <div class="him"><span>🔑 ${esc(p.keywords)}</span><span>${esc(p.tone)} · ${esc(p.length)}</span><span>${fmtD(p.created_at)}</span><span>${(p.tokens_in||0)+(p.tokens_out||0)} tokens</span></div>
         </div>
         <button class="dbtn" onclick="delPost(event,${p.id})" title="삭제">🗑</button>
